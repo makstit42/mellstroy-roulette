@@ -3374,6 +3374,47 @@
     .lb-hide-btn { align-self: center; border: 1px solid var(--border); background: var(--card-dark); border-radius: 14px; padding: 8px 14px; font-weight: 800; font-size: 0.82rem; }
     .lb-hide { display: none; }
     .lb-hide.open { display: block; }
+
+    /* «Мем на мем» */
+    .md-card { border-color: rgba(168, 85, 247, 0.5); background: linear-gradient(135deg, rgba(168,85,247,0.14), rgba(34,197,94,0.06)), var(--card); }
+    .md-create { background: linear-gradient(135deg, #a855f7, #6d28d9); box-shadow: 0 8px 22px rgba(168, 85, 247, 0.35); }
+    .md-row { border-color: rgba(168, 85, 247, 0.45); }
+    #mdModal { z-index: 965; }
+    .md-box { display: flex; flex-direction: column; gap: 10px; }
+    .md-wide { width: 100%; min-height: 46px; }
+    .md-timer { text-align: center; font-weight: 900; font-size: 1.05rem; color: #fde047; }
+    .md-msg { text-align: center; font-weight: 800; line-height: 1.5; padding: 14px 6px; }
+    .md-msg small { color: var(--muted); font-weight: 600; }
+    .md-msg.small { padding: 4px; font-size: 0.86rem; }
+    .md-hint { font-size: 0.78rem; color: var(--muted); font-weight: 700; text-align: center; line-height: 1.4; }
+    .md-hint b { color: var(--text, #fff); }
+    .md-vs-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+    .md-vs { font-weight: 900; color: #ef4444; font-size: 0.95rem; }
+    .md-pick-card { background: var(--card-dark); border: 2px solid var(--rc, var(--border)); border-radius: 16px; padding: 8px; text-align: center; min-width: 0; }
+    .md-pick-card.wait { border-style: dashed; border-color: var(--border); }
+    .md-pick-card .meme-poster { width: 100%; height: 92px; object-fit: contain; display: block; }
+    .md-q { font-size: 2rem; height: 92px; display: grid; place-items: center; }
+    .md-side .md-pick-card .meme-poster { height: 110px; }
+    .md-pname { font-weight: 900; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px; }
+    .md-pprice { font-weight: 900; font-size: 0.8rem; color: var(--muted); }
+    .md-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-height: 36vh; overflow-y: auto; padding: 2px; }
+    .md-item { position: relative; border: 2px solid var(--rc); border-radius: 12px; background: var(--card-dark); padding: 3px 3px 16px; }
+    .md-item .meme-poster { width: 100%; aspect-ratio: 1; object-fit: contain; display: block; }
+    .md-item.sel { box-shadow: 0 0 0 3px #fde047, 0 0 16px rgba(253, 224, 71, 0.6); transform: scale(1.04); }
+    .md-item.off { opacity: 0.28; filter: grayscale(1); }
+    .md-iprice { position: absolute; left: 0; right: 0; bottom: 2px; font-size: 0.62rem; font-weight: 900; text-align: center; }
+    .md-wheel-wrap { display: flex; justify-content: center; padding: 6px 0 2px; }
+    .md-wheel { position: relative; width: 210px; height: 210px; border-radius: 50%; display: grid; place-items: center; box-shadow: 0 0 30px rgba(0,0,0,0.5); transition: box-shadow 0.3s; }
+    .md-wheel.win { box-shadow: 0 0 46px rgba(34, 197, 94, 0.9); }
+    .md-wheel.lose { box-shadow: 0 0 40px rgba(239, 68, 68, 0.8); animation: stageShake 0.45s ease; }
+    .md-ring { position: absolute; inset: 0; border-radius: 50%; }
+    .md-inner { position: relative; z-index: 2; width: 150px; height: 150px; border-radius: 50%; background: var(--card-dark); border: 3px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .md-inner small { color: var(--muted); font-weight: 800; font-size: 0.75rem; }
+    .md-inner b { font-size: 1.15rem; font-weight: 900; color: #fde047; }
+    .md-side { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .md-pct { text-align: center; font-weight: 900; font-size: 1.1rem; }
+    .md-pct.green { color: #22c55e; }
+    .md-pct.red { color: #ef4444; }
   </style>
 </head>
 <body>
@@ -3612,6 +3653,11 @@
 
       <!-- Дуэли -->
       <div class="panel risk-panel" id="tab-duels">
+        <div class="duel-card md-card">
+          <div class="duel-title">🎭 Мем на мем</div>
+          <div class="page-hint">Ставишь мем из инвентаря против мема соперника. Чем дороже твой мем — тем больше твоя часть колеса. Кому выпадет — <b>забирает оба мема</b>. Только против живых игроков.</div>
+          <button class="duel-create md-create" id="mdCreateBtn" onclick="mdCreate()">🎭 Бросить вызов</button>
+        </div>
         <div class="duel-card">
           <div class="duel-title">⚔️ Новая дуэль</div>
           <div class="page-hint">Как батлы кейсов: оба открывают одинаковые кейсы с мемами, у кого дороже выпало — забирает <b>всё</b>. Крутит сервер, подкрутить нельзя.</div>
@@ -3839,6 +3885,13 @@
       <div class="battle-arena" id="battleArena"></div>
       <div class="battle-result" id="battleResult"></div>
       <button class="bank-action btn-outline" id="battleSkipBtn" onclick="skipBattle()">⏩ Пропустить анимацию</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="mdModal">
+    <div class="modal-box md-box">
+      <div class="modal-header"><h2 id="mdTitle">🎭 Мем на мем</h2><button class="close-modal-btn" id="mdCloseBtn" onclick="mdClose()">✕</button></div>
+      <div id="mdBody"></div>
     </div>
   </div>
 
@@ -9204,7 +9257,7 @@
     const SOC = { me: null, busy: false, lastSync: 0, duelMode: 'normal', duelRounds: 1, duelTimer: null, battle: null };
     // Новые функции включаются, только если сервер уже обновлён (version >= 2)
     const socOn = () => Boolean(LB_URL && inTelegram && SOC.v2);
-    if (LB_URL) fetch(LB_URL + '/').then(r => r.json()).then(d => { SOC.v2 = Boolean(d && d.version >= 2); SOC.v3 = Boolean(d && d.version >= 3); if (SOC.v2) socSync(true); }).catch(() => {});
+    if (LB_URL) fetch(LB_URL + '/').then(r => r.json()).then(d => { SOC.v2 = Boolean(d && d.version >= 2); SOC.v3 = Boolean(d && d.version >= 3); SOC.v4 = Boolean(d && d.version >= 4); if (SOC.v4) setTimeout(() => mdResume(), 2500); if (SOC.v2) socSync(true); }).catch(() => {});
 
     function socApi(path, body = {}) {
       return fetch(LB_URL + path, {
@@ -9235,6 +9288,8 @@
         }
         SOC.me = me;
         state.settings.botNotify = me.notify;
+        if (SOC.v4 && me.items > 0 && !MD.animating) mdClaimItems(true);
+        if (SOC.v4 && me.activeMduel && MD.watchId !== me.activeMduel) mdWatch(me.activeMduel);
         if (me.rewards && me.rewards.length) {
           const res = await socApi('/claim', { ids: me.rewards.map(r => r.id) });
           if (res && res.total > 0) {
@@ -9490,8 +9545,14 @@
       try {
         const data = await socApi('/battle/list');
         SOC.duels = data;
-        openEl.innerHTML = data.open.length ? data.open.map(b => duelRow(b)).join('') : '<div class="lb-empty">Открытых дуэлей нет — создай свою!</div>';
-        mineEl.innerHTML = data.mine.length ? data.mine.map(b => duelRow(b, true)).join('') : '<div class="lb-empty">Ты ещё не играл дуэли.</div>';
+        const mopen = SOC.v4 && data.mopen ? data.mopen : [];
+        const mmine = SOC.v4 && data.mmine ? data.mmine : [];
+        const openRows = mopen.map(mdRow).concat(data.open.map(b => duelRow(b)));
+        const tm = (x) => x.finished_at || x.created_at || 0;
+        const mineRows = mmine.map(d => ({ t: tm(d), h: mdRow(d) })).concat(data.mine.map(b => ({ t: tm(b), h: duelRow(b, true) })))
+          .sort((x, y) => y.t - x.t).slice(0, 20).map(x => x.h);
+        openEl.innerHTML = openRows.length ? openRows.join('') : '<div class="lb-empty">Открытых дуэлей нет — создай свою!</div>';
+        mineEl.innerHTML = mineRows.length ? mineRows.join('') : '<div class="lb-empty">Ты ещё не играл дуэли.</div>';
       } catch (e) {
         openEl.innerHTML = '<div class="lb-empty">⚠️ Не удалось загрузить дуэли.</div>';
       }
@@ -9693,6 +9754,371 @@
     window.toggleHidePanel = function() {
       document.getElementById('lbHidePanel').classList.toggle('open');
       renderHidePanel();
+    };
+
+
+    // ===================== «МЕМ НА МЕМ» =====================
+    const MD = { id: 0, data: null, selected: null, busy: false, loopT: null, watchId: 0, watchT: null, played: {}, animating: false, off: 0, timerT: null };
+    const mdOn = () => socOn() && SOC.v4;
+    const mdMine = (d) => d.side === 0 ? d.a : d.b;
+    const mdTheirs = (d) => d.side === 0 ? d.b : d.a;
+    const mdOppName = (d) => d.side === 0 ? (d.joiner || 'Соперник') : d.creator;
+
+    function mdItemPayload(p) {
+      const m = getPlateMeme(p);
+      return { rid: (p.rarity && p.rarity.id) || 'common', price: Math.round(p.sellPrice), memeId: m.id, tag: p.tag || '' };
+    }
+    function mdMakeItem(it) {
+      return {
+        id: makeId(), kind: 'plate', country: state.settings.plateType || 'rus',
+        rarity: memeRarity(it.rid), sellPrice: Math.max(10, Math.round(it.price)), memeId: it.memeId, tag: it.tag || '🎭 Мем на мем'
+      };
+    }
+    function mdCheat() { return typeof lbCheating === 'function' && lbCheating(); }
+    function mdMemeList() { return state.garage.filter(p => itemKind(p) === 'plate' && !(isUpgrading && String(p.id) === String(upgradingPlateId))); }
+
+    // Забрать мемы с сервера (выигрыш / возврат)
+    async function mdClaimItems(toast = true) {
+      try {
+        const res = await socApi('/items/claim');
+        if (!res || !res.ok || !res.items.length) return [];
+        const added = res.items.map(x => { const it = mdMakeItem(x.item); addItem(it); return { it, reason: x.reason }; });
+        saveState();
+        updateAllUI();
+        if (toast) {
+          const reasons = [...new Set(added.map(a => a.reason))];
+          reasons.forEach((r, i) => setTimeout(() => showToast(`🎭 ${r} (+${added.filter(a => a.reason === r).length} мем)`), 300 + i * 1600));
+        }
+        return added.map(a => a.it);
+      } catch (e) { return []; }
+    }
+
+    function mdRow(d) {
+      const who = `${lbEscape(d.creator)}${d.joiner ? ` <span>vs</span> ${lbEscape(d.joiner)}` : ''}`;
+      const head = (sub) => `<div class="duel-info"><div class="duel-who">🎭 ${who}</div><div class="page-hint">#${d.id} · Мем на мем · ${sub}</div></div>`;
+      if (d.status === 'open') {
+        if (d.own) return `<div class="duel-row md-row">${head('ждём соперника')}<button class="bank-action btn-red" onclick="mdCancel(${d.id})">✕</button></div>`;
+        return `<div class="duel-row md-row">${head('шанс по цене мема')}<button class="bank-action btn-green" onclick="mdJoin(${d.id})">🎭 Принять</button></div>`;
+      }
+      if (d.status === 'picking') return `<div class="duel-row md-row">${head('выбор мемов')}<button class="bank-action btn-green" onclick="mdOpen(${d.id})">▶️ Вернуться</button></div>`;
+      if (d.status === 'cancelled') return `<div class="duel-row muted">${head('отменена, мемы вернулись')}<span class="duel-tag">отменена</span></div>`;
+      const won = d.side != null && d.winner === d.side;
+      return `<div class="duel-row ${won ? 'won' : 'lost'}">${head('банк ' + fmtMoney(d.prize))}<button class="bank-action btn-outline" onclick="mdOpen(${d.id}, true)">${won ? '🏆 +' + fmtMoney(d.prize) : '💀 Смотреть'}</button></div>`;
+    }
+
+    window.mdCreate = async function() {
+      if (!mdOn()) { showToast(socOn() ? '🎭 «Мем на мем» скоро заработает' : 'Дуэли работают через бота в Telegram'); return; }
+      if (mdCheat()) { showToast('🎭 С включёнными читами разработчика дуэли недоступны'); return; }
+      if (!mdMemeList().length) { showToast('🎭 Нужен хотя бы один мем в инвентаре — покрути рулетку'); return; }
+      const btn = document.getElementById('mdCreateBtn');
+      btn.disabled = true;
+      try {
+        const res = await socApi('/mduel/create');
+        if (!res.ok) { if (res.id) mdWatch(res.id); throw new Error(res.error || 'Ошибка'); }
+        showToast('🎭 Вызов брошен! Как только кто-то примет — откроется выбор мема');
+        haptic('success');
+        mdWatch(res.id);
+      } catch (e) { showToast('⚠️ ' + e.message); }
+      finally { btn.disabled = false; loadDuels(false); }
+    };
+
+    window.mdJoin = async function(id) {
+      if (mdCheat()) { showToast('🎭 С включёнными читами разработчика дуэли недоступны'); return; }
+      if (!mdMemeList().length) { showToast('🎭 Нужен хотя бы один мем в инвентаре — покрути рулетку'); return; }
+      try {
+        const res = await socApi('/mduel/join', { id });
+        if (!res.ok) throw new Error(res.error || 'Ошибка');
+        haptic('success');
+        mdShow(res.duel);
+      } catch (e) { showToast('⚠️ ' + e.message); loadDuels(false); }
+    };
+
+    window.mdCancel = async function(id) {
+      try {
+        const res = await socApi('/mduel/cancel', { id });
+        if (!res.ok) throw new Error(res.error || 'Ошибка');
+        showToast('🎭 Вызов отменён');
+        if (MD.watchId === id) { MD.watchId = 0; clearTimeout(MD.watchT); }
+        mdClaimItems(false);
+        if (MD.id === id) mdShow(res.duel);
+      } catch (e) { showToast('⚠️ ' + e.message); }
+      loadDuels(false);
+    };
+
+    window.mdOpen = async function(id, replay = false) {
+      try {
+        const res = await socApi('/mduel/get', { id });
+        if (!res.ok) throw new Error(res.error || 'Ошибка');
+        if (replay) MD.played[id] = 'replay';
+        mdShow(res.duel);
+      } catch (e) { showToast('⚠️ ' + e.message); }
+    };
+
+    // Следим за своим вызовом: как только приняли — сразу открываем выбор мема
+    function mdWatch(id) {
+      MD.watchId = id;
+      clearTimeout(MD.watchT);
+      const tick = async () => {
+        if (MD.watchId !== id) return;
+        if (!document.hidden && !(MD.id === id && document.getElementById('mdModal').classList.contains('open'))) {
+          try {
+            const res = await socApi('/mduel/get', { id });
+            if (res.ok) {
+              const d = res.duel;
+              if (d.status === 'picking' || (d.status === 'done' && !MD.played[id])) {
+                playTone(880, 0.12, 'triangle', 0.12); setTimeout(() => playTone(1175, 0.16, 'triangle', 0.12), 140);
+                haptic('warning');
+                mdShow(d);
+              }
+              if (d.status === 'cancelled' || d.status === 'done') { MD.watchId = 0; if (d.status === 'cancelled') mdClaimItems(true); return; }
+            }
+          } catch (e) {}
+        }
+        MD.watchT = setTimeout(tick, 3000);
+      };
+      tick();
+    }
+
+    async function mdResume() {
+      if (!mdOn()) return;
+      if (SOC.me && SOC.me.activeMduel) mdWatch(SOC.me.activeMduel);
+    }
+
+    function mdLeft(d) { return Math.max(0, Math.ceil(((d.deadline || 0) - (Date.now() + MD.off)) / 1000)); }
+
+    function mdShow(d) {
+      const fresh = MD.id !== d.id;
+      MD.id = d.id;
+      MD.data = d;
+      MD.off = (d.serverNow || Date.now()) - Date.now();
+      if (fresh) MD.selected = null;
+      document.getElementById('mdModal').classList.add('open');
+      document.getElementById('mdTitle').textContent = `🎭 Мем на мем #${d.id}`;
+      clearTimeout(MD.loopT);
+      clearInterval(MD.timerT);
+      if (d.status === 'done') { mdRenderWheel(d); return; }
+      mdRenderPick(d);
+      if (d.status === 'picking' || d.status === 'open') {
+        MD.timerT = setInterval(() => { const el = document.getElementById('mdTimer'); if (el) el.textContent = mdTimerText(MD.data); }, 250);
+        MD.loopT = setTimeout(mdPoll, 1500);
+      }
+    }
+
+    function mdTimerText(d) {
+      if (d.status === 'open') return '⏳ ждём соперника';
+      const s = mdLeft(d);
+      return `⏱ 0:${String(s).padStart(2, '0')}`;
+    }
+
+    async function mdPoll() {
+      if (!document.getElementById('mdModal').classList.contains('open')) return;
+      try {
+        const res = await socApi('/mduel/get', { id: MD.id });
+        if (res.ok && res.duel.id === MD.id) {
+          const d = res.duel, prev = MD.data;
+          if (d.status !== prev.status || JSON.stringify(d.a) !== JSON.stringify(prev.a) || JSON.stringify(d.b) !== JSON.stringify(prev.b)) {
+            if (d.status === 'picking' && prev.status === 'picking' && mdTheirs(d) && !mdTheirs(prev)) { playTone(660, 0.1, 'triangle', 0.1); haptic('light'); }
+            mdShow(d);
+            return;
+          }
+          MD.data = d;
+        }
+      } catch (e) {}
+      MD.loopT = setTimeout(mdPoll, 1500);
+    }
+
+    function mdCardHTML(it, name, cls = '') {
+      if (!it) return `<div class="md-pick-card wait ${cls}"><div class="md-q">⏳</div><div class="md-pname">${lbEscape(name)}</div><div class="md-pprice">${cls === 'me' ? 'выбери мем ниже' : 'выбирает мем…'}</div></div>`;
+      const m = memeById(it.memeId);
+      const r = memeRarity(it.rid);
+      return `<div class="md-pick-card ${cls}" style="--rc:${r.color}">${memePosterImg(m.id)}<div class="md-pname">${lbEscape(name)}</div><div class="md-pprice" style="color:${r.color}">${fmtMoney(it.price)}</div></div>`;
+    }
+
+    function mdRenderPick(d) {
+      const body = document.getElementById('mdBody');
+      const mine = mdMine(d), theirs = mdTheirs(d);
+      const opp = mdOppName(d);
+      if (d.status === 'cancelled') {
+        body.innerHTML = `<div class="md-msg">❌ Дуэль отменена.<br><small>Поставленные мемы вернулись владельцам.</small></div>
+          <button class="bank-action btn-outline md-wide" onclick="mdClose()">Закрыть</button>`;
+        mdClaimItems(true);
+        loadDuels(false);
+        return;
+      }
+      if (d.status === 'open') {
+        body.innerHTML = `<div class="md-msg">🎭 Вызов #${d.id} брошен.<br><small>Как только кто-то примет — у обоих откроется выбор мема.</small></div>
+          <button class="bank-action btn-red md-wide" onclick="mdCancel(${d.id})">Отменить вызов</button>`;
+        return;
+      }
+      const ratio = d.maxRatio || 10;
+      const range = theirs ? [Math.ceil(theirs.price / ratio), theirs.price * ratio] : null;
+      let pickHTML = '';
+      if (!mine) {
+        const list = [...mdMemeList()].sort((a, b) => b.sellPrice - a.sellPrice);
+        const ok = (p) => !range || (p.sellPrice >= range[0] && p.sellPrice <= range[1]);
+        if (MD.selected && !list.some(p => String(p.id) === MD.selected && ok(p))) MD.selected = null;
+        const okCount = list.filter(ok).length;
+        pickHTML = `
+          <div class="md-hint">${range ? `Подходят мемы от <b>${fmtMoney(range[0])}</b> до <b>${fmtMoney(range[1])}</b> (не дешевле 1/10 мема соперника)` : 'Выбери мем из инвентаря. Чем дороже — тем больше твоя часть колеса.'}</div>
+          ${list.length && okCount ? '' : `<div class="md-msg small">${list.length ? '😕 Нет мемов подходящей цены.' : '😕 В инвентаре нет мемов.'}</div>`}
+          <div class="md-grid">${list.map(p => {
+            const m = getPlateMeme(p), r = p.rarity || BASE_RARITIES[0], good = ok(p);
+            return `<button class="md-item${String(p.id) === MD.selected ? ' sel' : ''}${good ? '' : ' off'}" style="--rc:${r.color}" ${good ? `onclick="mdSelect('${p.id}')"` : 'disabled'}>
+              ${memePosterImg(m.id)}<span class="md-iprice">${fmtMoney(p.sellPrice)}</span></button>`;
+          }).join('')}</div>
+          <button class="duel-create md-create md-wide" id="mdLockBtn" onclick="mdLock()" ${MD.selected ? '' : 'disabled'}>${MD.selected ? '✅ Поставить мем' : 'Выбери мем'}</button>`;
+      } else {
+        pickHTML = `<div class="md-msg small">✅ Твой мем на кону. Ждём, пока ${lbEscape(opp)} выберет…</div>`;
+      }
+      body.innerHTML = `
+        <div class="md-timer" id="mdTimer">${mdTimerText(d)}</div>
+        <div class="md-vs-row">${mdCardHTML(mine, 'Ты', 'me')}<div class="md-vs">VS</div>${mdCardHTML(theirs, opp, 'opp')}</div>
+        ${pickHTML}
+        <button class="bank-action btn-outline md-wide" onclick="mdCancel(${d.id})">🏳️ Отказаться (мемы вернутся)</button>`;
+    }
+
+    window.mdSelect = function(id) {
+      MD.selected = String(id);
+      haptic('select');
+      if (MD.data) mdRenderPick(MD.data);
+    };
+
+    window.mdLock = async function() {
+      if (MD.busy || !MD.selected || !MD.data) return;
+      if (isBusy()) { showToast('Дождись окончания крутки'); return; }
+      const idx = state.garage.findIndex(p => String(p.id) === MD.selected);
+      if (idx === -1) { MD.selected = null; mdRenderPick(MD.data); return; }
+      MD.busy = true;
+      const btn = document.getElementById('mdLockBtn');
+      if (btn) btn.disabled = true;
+      const item = state.garage[idx];
+      const payload = mdItemPayload(item);
+      state.garage.splice(idx, 1);   // мем уходит на кон (вернётся при отмене)
+      saveState();
+      updateAllUI();
+      try {
+        const res = await socApi('/mduel/pick', { id: MD.data.id, item: payload });
+        if (!res.ok) throw new Error(res.error || 'Ошибка');
+        haptic('success');
+        playTone(700, 0.08, 'triangle', 0.08);
+        MD.selected = null;
+        mdShow(res.duel);
+      } catch (e) {
+        state.garage.splice(Math.min(idx, state.garage.length), 0, item);
+        saveState();
+        updateAllUI();
+        showToast('⚠️ ' + e.message);
+        if (btn) btn.disabled = false;
+        mdOpen(MD.data.id);
+      } finally { MD.busy = false; }
+    };
+
+    // ---------- колесо ----------
+    function mdRenderWheel(d) {
+      const body = document.getElementById('mdBody');
+      const total = d.a.price + d.b.price;
+      const shareA = d.a.price / total;
+      const me = d.side == null ? 0 : d.side;
+      const mineIt = me === 0 ? d.a : d.b, theirsIt = me === 0 ? d.b : d.a;
+      const myName = d.side == null ? d.creator : 'Ты';
+      const oppName = d.side == null ? d.joiner : mdOppName(d);
+      const myPct = Math.round((me === 0 ? shareA : 1 - shareA) * 1000) / 10;
+      const degA = shareA * 360;
+      const cA = me === 0 ? '#22c55e' : '#ef4444', cB = me === 0 ? '#ef4444' : '#22c55e';
+      body.innerHTML = `
+        <div class="md-wheel-wrap">
+          <div class="md-wheel" id="mdWheel">
+            <div class="md-ring" style="background: conic-gradient(${cA} 0deg ${degA}deg, ${cB} ${degA}deg 360deg)"></div>
+            <div class="md-inner"><small>Банк</small><b>${fmtMoney(total)}</b></div>
+            <div class="wheel-needle-pivot" id="mdNeedle"><div class="wheel-needle"></div></div>
+          </div>
+        </div>
+        <div class="md-vs-row">
+          <div class="md-side me">${mdCardHTML(mineIt, myName, 'me')}<div class="md-pct green">${myPct}%</div></div>
+          <div class="md-vs">VS</div>
+          <div class="md-side opp">${mdCardHTML(theirsIt, oppName, 'opp')}<div class="md-pct red">${Math.round((100 - myPct) * 10) / 10}%</div></div>
+        </div>
+        <div class="battle-result" id="mdResult"></div>
+        <button class="bank-action btn-outline md-wide" id="mdSkipBtn" onclick="mdSkip()">⏩ Пропустить</button>`;
+      const replay = MD.played[d.id] === 'replay' || MD.played[d.id] === true;
+      const first = !MD.played[d.id];
+      MD.played[d.id] = true;
+      mdSpin(d, replay && !first);
+    }
+
+    function mdSpin(d, replay) {
+      const needle = document.getElementById('mdNeedle');
+      const final = 360 * 6 + d.roll * 360;
+      const dur = replay ? 3500 : 5500;
+      const token = (MD.spinToken = (MD.spinToken || 0) + 1);
+      let start = 0, lastTick = -1, done = false;
+      MD.animating = true;
+      musicDuck('mduel', true);
+      const ease = (t) => 1 - Math.pow(1 - t, 4);
+      const finish = () => {
+        if (done || token !== MD.spinToken) return;
+        done = true;
+        needle.style.transform = `rotate(${final}deg)`;
+        mdFinish(d, replay);
+      };
+      MD.skip = finish;
+      const frame = (ts) => {
+        if (done || token !== MD.spinToken) return;
+        if (!start) start = ts;
+        const t = Math.min(1, (ts - start) / dur);
+        const ang = final * ease(t);
+        needle.style.transform = `rotate(${ang}deg)`;
+        const tick = Math.floor(ang / 20);
+        if (tick !== lastTick) { lastTick = tick; playTone(520 + (t * 300), 0.015, 'triangle', 0.035); }
+        if (t < 1) requestAnimationFrame(frame); else finish();
+      };
+      requestAnimationFrame(frame);
+    }
+
+    window.mdSkip = function() { if (MD.skip) MD.skip(); };
+
+    async function mdFinish(d, replay) {
+      MD.animating = false;
+      musicDuck('mduel', false);
+      const skip = document.getElementById('mdSkipBtn');
+      if (skip) skip.style.display = 'none';
+      const res = document.getElementById('mdResult');
+      const wheel = document.getElementById('mdWheel');
+      const iWon = d.side != null && d.winner === d.side;
+      const prizeIt = d.side === 0 ? d.b : d.a;
+      if (d.side == null) { res.textContent = `🏆 Победил ${d.winner === 0 ? d.creator : d.joiner}`; return; }
+      if (iWon) {
+        wheel.classList.add('win');
+        res.className = 'battle-result win';
+        res.innerHTML = `🏆 <b>Ты забрал оба мема!</b> +${fmtMoney(prizeIt.price)}`;
+        if (!replay) {
+          spawnParticlesFromEl(wheel, ['#22c55e', '#fde047', '#fff'], 80, 11);
+          playWinSound(prizeIt.rid === 'legendary' || prizeIt.rid === 'epic' ? prizeIt.rid : 'epic');
+          haptic('success');
+          taskProgress('duel');
+          const got = await mdClaimItems(false);
+          const won = got.find(x => x.memeId === prizeIt.memeId && x.sellPrice === prizeIt.price)
+            || state.garage.find(x => x.memeId === prizeIt.memeId && x.sellPrice === prizeIt.price);
+          if (won) res.insertAdjacentHTML('afterend', `<button class="duel-create md-create md-wide" onclick="mdWatchMeme('${won.id}')">▶️ Смотреть выигранный мем</button>`);
+        }
+      } else {
+        wheel.classList.add('lose');
+        res.className = 'battle-result lose';
+        res.innerHTML = `💀 ${lbEscape(mdOppName(d))} забрал твой мем`;
+        if (!replay) { playUpgradeLoseSound(); haptic('error'); taskProgress('duel'); }
+      }
+      loadDuels(false);
+    }
+
+    window.mdWatchMeme = function(id) { mdClose(); openMemeModal(id); };
+
+    window.mdClose = function() {
+      const d = MD.data;
+      if (d && d.status === 'picking') { showToast('🎭 Дуэль идёт — выбери мем или откажись'); return; }
+      if (MD.skip && MD.animating) MD.skip();
+      clearTimeout(MD.loopT);
+      clearInterval(MD.timerT);
+      document.getElementById('mdModal').classList.remove('open');
     };
 
     function openRisk(which = riskTab) {

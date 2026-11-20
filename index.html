@@ -3370,6 +3370,10 @@
     .lb-seg button { flex-direction: column; gap: 1px; font-size: 0.62rem; line-height: 1.1; min-height: 44px; padding: 3px 1px; }
     .lb-seg .lb-ico { font-size: 1rem; }
     #profileModal, #battleModal { z-index: 960; }
+
+    .lb-hide-btn { align-self: center; border: 1px solid var(--border); background: var(--card-dark); border-radius: 14px; padding: 8px 14px; font-weight: 800; font-size: 0.82rem; }
+    .lb-hide { display: none; }
+    .lb-hide.open { display: block; }
   </style>
 </head>
 <body>
@@ -3854,6 +3858,8 @@
       <div class="lb-week" id="lbWeek"></div>
       <div class="lb-list" id="lbList"></div>
       <div class="lb-me" id="lbMe"></div>
+      <button class="lb-hide-btn" id="lbHideBtn" onclick="toggleHidePanel()">🙈 Видимость в топах</button>
+      <div class="lb-hide list-card" id="lbHidePanel"></div>
     </div>
   </div>
 
@@ -9147,6 +9153,7 @@
         }).join('') : '<div class="lb-empty">Пока никого нет — будь первым!</div>';
         if (!inTelegram) meBox.innerHTML = 'Открой игру через бота в Telegram, чтобы попасть в топ.';
         else if (lbCheating()) meBox.innerHTML = 'С включёнными DEV-читами результат в топ не отправляется.';
+        else if (data.me && data.me.hidden) meBox.innerHTML = '🙈 Ты скрыт в этом топе — другие тебя не видят.';
         else if (data.me) meBox.innerHTML = `Твоё место: <b>${data.me.rank}</b> из ${data.total}`;
         else meBox.innerHTML = 'Твой результат появится в топе в течение минуты.';
       });
@@ -9162,6 +9169,8 @@
 
     window.openLeaderboard = function() {
       document.getElementById('lbModal').classList.add('open');
+      document.getElementById('lbHidePanel').classList.remove('open');
+      if (typeof renderHidePanel === 'function') renderHidePanel();
       haptic('light');
       renderLeaderboard();
     };
@@ -9181,7 +9190,7 @@
     const SOC = { me: null, busy: false, lastSync: 0, duelMode: 'normal', duelRounds: 1, duelTimer: null, battle: null };
     // Новые функции включаются, только если сервер уже обновлён (version >= 2)
     const socOn = () => Boolean(LB_URL && inTelegram && SOC.v2);
-    if (LB_URL) fetch(LB_URL + '/').then(r => r.json()).then(d => { SOC.v2 = Boolean(d && d.version >= 2); if (SOC.v2) socSync(true); }).catch(() => {});
+    if (LB_URL) fetch(LB_URL + '/').then(r => r.json()).then(d => { SOC.v2 = Boolean(d && d.version >= 2); SOC.v3 = Boolean(d && d.version >= 3); if (SOC.v2) socSync(true); }).catch(() => {});
 
     function socApi(path, body = {}) {
       return fetch(LB_URL + path, {
@@ -9638,6 +9647,38 @@
       if (SOC.battleFinish && document.getElementById('battleSkipBtn').style.display !== 'none') SOC.battleFinish();
       SOC.battleToken = (SOC.battleToken || 0) + 1;
       document.getElementById('battleModal').classList.remove('open');
+    };
+
+
+    // ---------- скрыть себя в топах ----------
+    const HIDE_BOARDS = [['balance', '💰 Богачи'], ['level', '⭐ Уровень'], ['clips', '🎬 Мемчики'], ['legend', '👑 Легенды'], ['week', '🏁 Неделя']];
+    function renderHidePanel() {
+      const btn = document.getElementById('lbHideBtn');
+      const panel = document.getElementById('lbHidePanel');
+      const can = socOn() && SOC.v3 && SOC.me;
+      btn.style.display = can ? '' : 'none';
+      if (!can) { panel.classList.remove('open'); return; }
+      const h = SOC.me.hide || {};
+      const hiddenCount = HIDE_BOARDS.filter(([k]) => h[k]).length;
+      btn.textContent = hiddenCount ? (hiddenCount === HIDE_BOARDS.length ? '🙈 Скрыт во всех топах' : `🙈 Скрыт в ${hiddenCount} из ${HIDE_BOARDS.length}`) : '👁 Видимость в топах';
+      const all = hiddenCount === HIDE_BOARDS.length;
+      panel.innerHTML = `<label class="toggle-row"><span><b>Скрыть меня во всех топах</b></span><input type="checkbox" data-hide="all" ${all ? 'checked' : ''}></label>`
+        + HIDE_BOARDS.map(([k, l]) => `<label class="toggle-row"><span>Скрыть в «${l}»${k === 'week' ? '<small>Скрытые не получают призы недельного турнира</small>' : ''}</span><input type="checkbox" data-hide="${k}" ${h[k] ? 'checked' : ''}></label>`).join('');
+      panel.querySelectorAll('input[data-hide]').forEach(inp => inp.addEventListener('change', () => {
+        const next = { ...(SOC.me.hide || {}) };
+        if (inp.dataset.hide === 'all') HIDE_BOARDS.forEach(([k]) => { next[k] = inp.checked; });
+        else next[inp.dataset.hide] = inp.checked;
+        SOC.me.hide = next;
+        haptic('select');
+        renderHidePanel();
+        socApi('/settings', { hide: next })
+          .then(r => { if (!r || !r.ok) throw new Error(); renderLeaderboard(); })
+          .catch(() => showToast('⚠️ Не удалось сохранить. Проверь интернет.'));
+      }));
+    }
+    window.toggleHidePanel = function() {
+      document.getElementById('lbHidePanel').classList.toggle('open');
+      renderHidePanel();
     };
 
     function openRisk(which = riskTab) {

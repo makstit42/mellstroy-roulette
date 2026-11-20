@@ -5620,8 +5620,24 @@
     }
 
     function getMemePlayer() {
-      if (!MEME.player) MEME.player = makeHiddenVideo();
+      if (!MEME.player) {
+        MEME.player = makeHiddenVideo();
+        try {
+          const ctx = getAudioCtx();
+          const node = ctx.createMediaElementSource(MEME.player);
+          MEME.gain = ctx.createGain();
+          MEME.gain.gain.value = 0;
+          node.connect(MEME.gain);
+          MEME.gain.connect(ctx.destination);
+        } catch (e) { MEME.gain = null; }
+      }
       return MEME.player;
+    }
+
+    function memeGainSet(v) {
+      if (!MEME.gain || !audioCtx) return;
+      MEME.gain.gain.cancelScheduledValues(audioCtx.currentTime);
+      MEME.gain.gain.setValueAtTime(v, audioCtx.currentTime);
     }
 
     function memeStop() {
@@ -5644,7 +5660,8 @@
         MEME.playerMid = mid;
         v.load();
       }
-      v.muted = true;
+      getAudioCtx();
+      if (MEME.gain) { memeGainSet(0); v.muted = false; } else v.muted = true;
       MEME.priming = true;
       const p = v.play();
       if (p && p.then) {
@@ -5674,6 +5691,8 @@
         MEME.playerMid = m.id;
       }
       v.muted = silent || !soundEnabled;
+      getAudioCtx();
+      memeGainSet(1);
       try { v.currentTime = 0; } catch (e) {}
 
       const draw = () => {

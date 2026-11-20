@@ -6054,7 +6054,28 @@
       'media/audio/music_09.m4a',
       'media/audio/music_10.m4a'
     ];
-    const bgm = { el: null, node: null, order: [], idx: -1, urls: [], duck: new Set() };
+    const bgm = { src: null, buf: null, order: [], idx: -1, urls: [], duck: new Set(), token: 0, startedAt: 0, offset: null };
+
+    // Короткие звуки (легендарка, проигрыш) — раскодированные один раз и сыгранные через Web Audio
+    const SFX = { cache: {}, loading: {} };
+    function sfxLoad(url) {
+      if (SFX.cache[url]) return Promise.resolve(SFX.cache[url]);
+      if (!SFX.loading[url]) {
+        SFX.loading[url] = fetch(url).then(r => r.arrayBuffer())
+          .then(ab => new Promise((ok, err) => getAudioCtx().decodeAudioData(ab, ok, err)))
+          .then(b => (SFX.cache[url] = b))
+          .catch(e => { delete SFX.loading[url]; throw e; });
+      }
+      return SFX.loading[url];
+    }
+    function sfxPlay(buf) {
+      const ctx = getAudioCtx();
+      const s = ctx.createBufferSource();
+      s.buffer = buf;
+      s.connect(ctx.destination);
+      s.start();
+      return s;
+    }
 
     function bgmUrl(i) {
       if (String(MUSIC_TRACKS[i]).startsWith('media/')) return MUSIC_TRACKS[i];
@@ -6081,14 +6102,21 @@
       return bgm.order[++bgm.idx];
     }
 
-    function applyMusicVolume() {
-      const target = musicVolume() * (bgm.duck.size ? 0.2 : 1);
-      if (music.gain && audioCtx) {
-        music.gain.gain.cancelScheduledValues(audioCtx.currentTime);
-        music.gain.gain.setTargetAtTime(target, audioCtx.currentTime, 0.25);
-      } else if (bgm.el) {
-        bgm.el.volume = Math.max(0, Math.min(1, target));
+    function ensureMusicGain() {
+      const ctx = getAudioCtx();
+      if (!music.gain) {
+        music.gain = ctx.createGain();
+        music.gain.gain.value = 0;
+        music.gain.connect(ctx.destination);
       }
+      return ctx;
+    }
+
+    function applyMusicVolume() {
+      if (!music.gain || !audioCtx) return;
+      const target = musicVolume() * (bgm.duck.size ? 0.2 : 1);
+      music.gain.gain.cancelScheduledValues(audioCtx.currentTime);
+      music.gain.gain.setTargetAtTime(music.on ? target : 0, audioCtx.currentTime, 0.25);
     }
 
     // Приглушаем музыку, пока играет мем (key — кто просит)
@@ -6097,34 +6125,48 @@
       applyMusicVolume();
     }
 
+    function bgmStopSrc() {
+      if (!bgm.src) return;
+      const s = bgm.src;
+      bgm.src = null;
+      try { s.onended = null; s.stop(); } catch (e) {}
+    }
+
+    function bgmStartBuf(buf, offset) {
+      bgmStopSrc();
+      const ctx = ensureMusicGain();
+      bgm.buf = buf;
+      const s = ctx.createBufferSource();
+      s.buffer = buf;
+      s.connect(music.gain);
+      s.onended = () => {
+        if (bgm.src !== s) return;
+        bgm.src = null; bgm.buf = null; bgm.offset = null;
+        if (music.on) bgmPlayNext();
+      };
+      s.start(0, offset || 0);
+      bgm.src = s;
+      bgm.startedAt = ctx.currentTime - (offset || 0);
+    }
+
     function bgmPlayNext() {
-      if (!bgm.el || !music.on) return;
-      bgm.el.src = bgmUrl(bgmNextIndex());
-      bgm.el.play().catch(() => { music.on = false; renderMusicBtn(); });
+      if (!music.on) return;
+      const my = ++bgm.token;
+      const url = bgmUrl(bgmNextIndex());
+      fetch(url).then(r => r.arrayBuffer())
+        .then(ab => new Promise((ok, err) => getAudioCtx().decodeAudioData(ab, ok, err)))
+        .then(buf => { if (my === bgm.token && music.on) bgmStartBuf(buf, 0); })
+        .catch(() => { if (my === bgm.token && music.on) setTimeout(bgmPlayNext, 1500); });
     }
 
     function startMusic() {
       if (music.on || !state.settings.music || !MUSIC_TRACKS.length) return;
       try {
-        const ctx = getAudioCtx();
-        if (!bgm.el) {
-          bgm.el = new Audio();
-          bgm.el.preload = 'auto';
-          bgm.el.setAttribute('playsinline', '');
-          bgm.el.addEventListener('ended', bgmPlayNext);
-          try {
-            // через Web Audio — так громкость работает и на iPhone
-            bgm.node = ctx.createMediaElementSource(bgm.el);
-            music.gain = ctx.createGain();
-            music.gain.gain.value = 0;
-            bgm.node.connect(music.gain);
-            music.gain.connect(ctx.destination);
-          } catch (e) { music.gain = null; }
-        }
+        ensureMusicGain();
         music.on = true;
         applyMusicVolume();
-        if (!bgm.el.src) bgmPlayNext();
-        else bgm.el.play().catch(() => { music.on = false; renderMusicBtn(); });
+        if (bgm.buf && bgm.offset != null) bgmStartBuf(bgm.buf, bgm.offset);
+        else bgmPlayNext();
       } catch (_) { music.on = false; }
       renderMusicBtn();
     }
@@ -6132,7 +6174,10 @@
     function stopMusic() {
       if (!music.on) return;
       music.on = false;
-      if (bgm.el) bgm.el.pause();
+      if (bgm.src && bgm.buf && audioCtx) bgm.offset = (audioCtx.currentTime - bgm.startedAt) % bgm.buf.duration;
+      bgm.token++;
+      bgmStopSrc();
+      applyMusicVolume();
       renderMusicBtn();
     }
 
@@ -6145,6 +6190,11 @@
       musicDuck('fanfare', true);
       setTimeout(() => musicDuck('fanfare', false), seconds * 1000);
     }
+
+    // Телефон мог «усыпить» звук (свернули приложение, звонок) — будим при возврате и при касании
+    const wakeAudio = () => { if (audioCtx && audioCtx.state !== 'running') audioCtx.resume().catch(() => {}); };
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) wakeAudio(); });
+    ['pointerdown', 'touchend'].forEach(ev => window.addEventListener(ev, wakeAudio, { passive: true }));
 
     function renderMusicBtn() {
       const btn = document.getElementById('musicBtn');
@@ -6197,42 +6247,36 @@
       return i;
     }
 
-    function getLegendEl() {
-      if (!LEGEND.el) {
-        LEGEND.el = new Audio();
-        LEGEND.el.preload = 'auto';
-        LEGEND.el.setAttribute('playsinline', '');
-        // музыка возвращается при любой остановке звука (конец, пауза, смена файла)
-        ['ended', 'pause', 'emptied', 'error'].forEach(ev => LEGEND.el.addEventListener(ev, () => musicDuck('legend', false)));
-      }
-      return LEGEND.el;
+    const LEGEND_PLAY = { src: null, token: 0 };
+
+    function legendStop() {
+      LEGEND_PLAY.token++;
+      if (LEGEND_PLAY.src) { try { LEGEND_PLAY.src.onended = null; LEGEND_PLAY.src.stop(); } catch (e) {} LEGEND_PLAY.src = null; }
+      musicDuck('legend', false);
     }
 
-    // По нажатию «Крутить», если выпадет легендарка: заранее «разблокируем» звук (iOS/Telegram)
+    // По нажатию «Крутить», если выпадет легендарка: заранее выбираем и раскодируем звук
     function legendPrime() {
       if (!LEGEND_SOUNDS.length) return;
-      const a = getLegendEl();
-      a.pause();
-      musicDuck('legend', false);
+      legendStop();
       LEGEND.next = legendPick();
-      a.src = legendUrl(LEGEND.next);
-      a.muted = true;
-      const p = a.play();
-      if (p && p.then) p.then(() => { a.pause(); a.currentTime = 0; a.muted = false; }).catch(() => { a.muted = false; });
+      sfxLoad(legendUrl(LEGEND.next)).catch(() => {});
     }
 
     function playLegendFanfare() {
       if (!soundEnabled || !LEGEND_SOUNDS.length) return;
-      const a = getLegendEl();
       const i = LEGEND.next >= 0 ? LEGEND.next : legendPick();
       LEGEND.next = -1;
       LEGEND.last = i;
-      if (a.getAttribute('src') !== legendUrl(i)) a.src = legendUrl(i);
-      a.muted = false;
-      try { a.currentTime = 0; } catch (e) {}
-      musicDuck('legend', true);
-      a.onended = () => musicDuck('legend', false);
-      a.play().catch(() => musicDuck('legend', false));
+      legendStop();
+      const my = LEGEND_PLAY.token;
+      sfxLoad(legendUrl(i)).then(buf => {
+        if (my !== LEGEND_PLAY.token || !soundEnabled) return;
+        musicDuck('legend', true);
+        const s = sfxPlay(buf);
+        LEGEND_PLAY.src = s;
+        s.onended = () => { if (LEGEND_PLAY.src === s) { LEGEND_PLAY.src = null; musicDuck('legend', false); } };
+      }).catch(() => {});
     }
 
     let legendFxTimer = null;
@@ -6599,32 +6643,26 @@
       return LOSE.urls[i];
     }
 
-    // Готовим звук по нажатию «Апгрейдить» (иначе iOS/Telegram может не дать его включить)
+    const LOSE_PLAY = { src: null, idx: 0 };
+
+    // По нажатию «Апгрейдить»: заранее раскодируем звук
     function losePrime() {
       if (!LOSE_SOUNDS.length) return;
-      if (!LOSE.el) {
-        LOSE.el = new Audio(); LOSE.el.preload = 'auto'; LOSE.el.setAttribute('playsinline', '');
-        // музыка возвращается при любой остановке звука (конец, пауза, смена файла)
-        ['ended', 'pause', 'emptied', 'error'].forEach(ev => LOSE.el.addEventListener(ev, () => musicDuck('lose', false)));
-      }
-      const a = LOSE.el;
-      a.pause();
+      if (LOSE_PLAY.src) { try { LOSE_PLAY.src.onended = null; LOSE_PLAY.src.stop(); } catch (e) {} LOSE_PLAY.src = null; }
       musicDuck('lose', false);
-      a.src = loseUrl(Math.floor(Math.random() * LOSE_SOUNDS.length));
-      a.muted = true;
-      const p = a.play();
-      if (p && p.then) p.then(() => { a.pause(); a.currentTime = 0; a.muted = false; }).catch(() => { a.muted = false; });
+      LOSE_PLAY.idx = Math.floor(Math.random() * LOSE_SOUNDS.length);
+      sfxLoad(loseUrl(LOSE_PLAY.idx)).catch(() => {});
     }
 
     function playUpgradeLoseSound() {
       if (!soundEnabled) return;
-      if (!LOSE_SOUNDS.length || !LOSE.el) { playLoseSound(); return; }
-      const a = LOSE.el;
-      a.muted = false;
-      try { a.currentTime = 0; } catch (e) {}
-      musicDuck('lose', true);
-      a.onended = () => musicDuck('lose', false);
-      a.play().catch(() => { musicDuck('lose', false); playLoseSound(); });
+      if (!LOSE_SOUNDS.length) { playLoseSound(); return; }
+      sfxLoad(loseUrl(LOSE_PLAY.idx)).then(buf => {
+        musicDuck('lose', true);
+        const s = sfxPlay(buf);
+        LOSE_PLAY.src = s;
+        s.onended = () => { if (LOSE_PLAY.src === s) { LOSE_PLAY.src = null; musicDuck('lose', false); } };
+      }).catch(() => playLoseSound());
     }
 
     function runUpgrade() {
@@ -8754,7 +8792,7 @@
     // Ушли с экрана крутки — глушим выпавший мем/мемчик и звук легендарки
     function stopStageSounds() {
       memeStop();
-      if (typeof LEGEND !== 'undefined' && LEGEND.el) { LEGEND.el.pause(); musicDuck('legend', false); }
+      if (typeof legendStop === 'function') legendStop();
     }
 
     document.addEventListener('visibilitychange', () => {

@@ -3266,6 +3266,23 @@
     @keyframes bgPhotoPan { from { background-position: 0 0, 0% 50%; } to { background-position: 0 0, 100% 50%; } }
     .bg-sprite { width: 2em; height: auto; display: block; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35)); }
     .theme-sprite { height: 1.9em; width: auto; }
+
+    /* Лидерборд */
+    .lb-seg { grid-auto-columns: 1fr; }
+    .lb-seg button { font-size: 0.74rem; padding: 4px 2px; }
+    .lb-list { display: flex; flex-direction: column; gap: 6px; min-height: 120px; }
+    .lb-row {
+      display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 8px;
+      padding: 9px 12px; border-radius: 14px; background: var(--card-dark); border: 1px solid var(--border);
+      font-weight: 700; font-size: 0.86rem;
+    }
+    .lb-row.me { border-color: #f59e0b; background: rgba(245, 158, 11, 0.14); }
+    .lb-place { text-align: center; font-weight: 900; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .lb-name { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lb-val { font-weight: 900; color: #86efac; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .lb-empty { text-align: center; color: var(--muted); padding: 28px 8px; font-weight: 700; }
+    .lb-me { text-align: center; color: var(--muted); font-size: 0.82rem; font-weight: 700; padding-bottom: 4px; }
+    .lb-me b { color: #fde047; }
   </style>
 </head>
 <body>
@@ -3298,6 +3315,7 @@
         <span class="wheel-open-text" id="wheelBtnText">Бесплатно</span>
         <span class="tab-dot" id="wheelDot"></span>
       </button>
+      <button class="top-btn" id="lbBtn" aria-label="Топ игроков" onclick="openLeaderboard()">🏆</button>
       <button class="top-btn" id="settingsBtn" aria-label="Меню и настройки">⚙️<span class="dev-pill" id="devBadge">DEV</span></button>
     </header>
 
@@ -3661,6 +3679,23 @@
   </div>
 
   <!-- Трасса -->
+  <div class="modal-overlay" id="lbModal">
+    <div class="modal-box lb-modal-box">
+      <div class="modal-header">
+        <h2>🏆 Топ игроков</h2>
+        <button class="close-modal-btn" aria-label="Закрыть" onclick="closeLeaderboard()">✕</button>
+      </div>
+      <div class="seg lb-seg" id="lbSeg">
+        <button data-lb="balance" class="active">💰 Богачи</button>
+        <button data-lb="level">⭐ Уровень</button>
+        <button data-lb="clips">🎬 Мемчики</button>
+        <button data-lb="legend">👑 Легенды</button>
+      </div>
+      <div class="lb-list" id="lbList"></div>
+      <div class="lb-me" id="lbMe"></div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="memeModal">
     <div class="modal-box meme-modal-box">
       <div class="modal-header">
@@ -6328,6 +6363,9 @@
     }
 
     function celebrateLegendary(item) {
+      state.legendCount = (state.legendCount || 0) + 1;
+      saveState();
+      setTimeout(() => lbSubmit(true), 4000);
       const fx = document.getElementById('legendFx');
       spawnLegendEmojis();
       const name = itemKind(item) === 'car' ? `🎬 ${getCarClip(item) ? getCarClip(item).name : 'Мемчик'}` : formatPlateShort(item);
@@ -8843,6 +8881,109 @@
       if (prevPage !== currentPage) window.scrollTo(0, 0);
       updateAllUI();
     }
+
+
+    // === ЛИДЕРБОРД ===
+    const LB_URL = 'https://mellstroy-lb.makstit42.workers.dev';
+    const LB = { by: 'balance', lastSent: 0, lastKey: '', loading: 0 };
+
+    function lbCheating() {
+      const d = state.dev || {};
+      return Boolean(d.noLimits || d.alwaysWinUpgrade || d.forceLegend || d.infiniteWheel);
+    }
+
+    function lbStats() {
+      return {
+        balance: Math.floor(state.balance),
+        xp: Math.floor(state.xp || 0),
+        level: getLevelInfo().level,
+        clips: clipOwnedCount(),
+        legend: state.legendCount || 0,
+        spins: state.spins || 0
+      };
+    }
+
+    // Отправляем результат: раз в минуту, если что-то поменялось, и при сворачивании игры
+    function lbSubmit(force = false) {
+      if (!LB_URL || !inTelegram || lbCheating()) return;
+      const stats = lbStats();
+      const key = JSON.stringify(stats);
+      const now = Date.now();
+      if (key === LB.lastKey) return;
+      if (!force && now - LB.lastSent < 60000) return;
+      LB.lastSent = now;
+      fetch(LB_URL + '/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData: tg.initData, stats }),
+        keepalive: true
+      }).then(r => r.json()).then(res => { if (res && res.ok && !res.throttled) LB.lastKey = key; }).catch(() => {});
+    }
+    setInterval(() => lbSubmit(false), 30000);
+    setTimeout(() => lbSubmit(true), 5000);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) lbSubmit(true); });
+
+    function lbValue(row, by) {
+      if (by === 'level') return `Ур. ${row.level}`;
+      if (by === 'clips') return `${row.clips}/${CLIPS.length} 🎬`;
+      if (by === 'legend') return `${row.legend} 👑`;
+      return fmtMoney(row.balance);
+    }
+
+    function lbEscape(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function renderLeaderboard() {
+      const list = document.getElementById('lbList');
+      const meBox = document.getElementById('lbMe');
+      document.querySelectorAll('#lbSeg button').forEach(b => b.classList.toggle('active', b.dataset.lb === LB.by));
+      if (!LB_URL) {
+        list.innerHTML = '<div class="lb-empty">🛠️ Топ скоро заработает.</div>';
+        meBox.textContent = '';
+        return;
+      }
+      list.innerHTML = '<div class="lb-empty">Загружаем…</div>';
+      const by = LB.by;
+      const my = ++LB.loading;
+      const meId = inTelegram && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : 0;
+      const go = () => fetch(`${LB_URL}/top?by=${by}&me=${meId}`).then(r => r.json()).then(data => {
+        if (my !== LB.loading) return;
+        if (!data || !Array.isArray(data.top)) throw new Error('bad');
+        list.innerHTML = data.top.length ? data.top.map((row, i) => {
+          const place = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : String(i + 1);
+          return `<div class="lb-row ${row.isMe ? 'me' : ''}"><span class="lb-place">${place}</span><span class="lb-name">${lbEscape(row.name)}${row.isMe ? ' (ты)' : ''}</span><span class="lb-val">${lbValue(row, by)}</span></div>`;
+        }).join('') : '<div class="lb-empty">Пока никого нет — будь первым!</div>';
+        if (!inTelegram) meBox.innerHTML = 'Открой игру через бота в Telegram, чтобы попасть в топ.';
+        else if (lbCheating()) meBox.innerHTML = 'С включёнными DEV-читами результат в топ не отправляется.';
+        else if (data.me) meBox.innerHTML = `Твоё место: <b>${data.me.rank}</b> из ${data.total}`;
+        else meBox.innerHTML = 'Твой результат появится в топе в течение минуты.';
+      });
+      // свежий результат — перед загрузкой топа
+      if (inTelegram && !lbCheating() && JSON.stringify(lbStats()) !== LB.lastKey) {
+        LB.lastSent = 0;
+        lbSubmit(true);
+        setTimeout(() => go().catch(() => { list.innerHTML = '<div class="lb-empty">⚠️ Не удалось загрузить топ. Проверь интернет.</div>'; }), 1200);
+      } else {
+        go().catch(() => { list.innerHTML = '<div class="lb-empty">⚠️ Не удалось загрузить топ. Проверь интернет.</div>'; });
+      }
+    }
+
+    window.openLeaderboard = function() {
+      document.getElementById('lbModal').classList.add('open');
+      haptic('light');
+      renderLeaderboard();
+    };
+    window.closeLeaderboard = function() {
+      document.getElementById('lbModal').classList.remove('open');
+    };
+    document.getElementById('lbModal').addEventListener('click', (e) => { if (e.target.id === 'lbModal') closeLeaderboard(); });
+    document.querySelectorAll('#lbSeg button').forEach(b => b.addEventListener('click', () => {
+      if (LB.by === b.dataset.lb) return;
+      LB.by = b.dataset.lb;
+      haptic('select');
+      renderLeaderboard();
+    }));
 
     function openRisk(which = riskTab) {
       switchTab(which === 'contracts' ? 'contracts' : 'upgrader');

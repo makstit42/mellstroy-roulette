@@ -3283,6 +3283,93 @@
     .lb-empty { text-align: center; color: var(--muted); padding: 28px 8px; font-weight: 700; }
     .lb-me { text-align: center; color: var(--muted); font-size: 0.82rem; font-weight: 700; padding-bottom: 4px; }
     .lb-me b { color: #fde047; }
+
+    /* Социальное: кнопки, задания, друзья, профиль, дуэли */
+    .soc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+    .soc-btn {
+      min-height: 46px; border-radius: 18px; border: 1px solid var(--border); background: var(--card);
+      font-weight: 800; font-size: 0.86rem; display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .soc-btn:active { transform: scale(0.96); }
+    .soc-badge { font-size: 0.7rem; font-weight: 900; padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,0.1); color: var(--muted); }
+    .soc-badge.gold { background: #f59e0b; color: #0f172a; }
+    .stage-share {
+      position: absolute; top: 12px; right: 12px; z-index: 4; width: 42px; height: 42px; border-radius: 50%;
+      border: 1px solid var(--border); background: rgba(2, 6, 23, 0.7); font-size: 1.1rem; display: none;
+    }
+    .stage-share.show { display: grid; place-items: center; }
+    .meme-share { border: 1px solid var(--border); background: var(--card-dark); border-radius: 12px; padding: 4px 10px; font-weight: 800; font-size: 0.8rem; }
+    .streak-card { background: linear-gradient(135deg, rgba(249,115,22,0.18), rgba(234,179,8,0.12)); border: 1px solid rgba(249,115,22,0.5); border-radius: 18px; padding: 12px 14px; font-weight: 700; line-height: 1.4; }
+    .streak-card small { color: var(--muted); font-weight: 600; }
+    .task-list { display: flex; flex-direction: column; gap: 8px; }
+    .task-row { display: flex; align-items: center; gap: 10px; background: var(--card-dark); border: 1px solid var(--border); border-radius: 16px; padding: 10px 12px; }
+    .task-row.done { border-color: #22c55e; }
+    .task-row.claimed { opacity: 0.6; }
+    .task-info { flex: 1; min-width: 0; }
+    .task-text { font-weight: 800; font-size: 0.88rem; }
+    .task-bar { height: 6px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; margin: 6px 0 4px; }
+    .task-bar i { display: block; height: 100%; background: linear-gradient(90deg, #22c55e, #86efac); }
+    .task-sub { font-size: 0.72rem; color: var(--muted); font-weight: 700; }
+    .task-ok { font-size: 1.3rem; }
+    .task-row .bank-action { flex-shrink: 0; min-width: 84px; }
+    .friends-card { display: flex; flex-direction: column; gap: 10px; }
+    .friends-big { text-align: center; font-size: 1.3rem; font-weight: 900; color: #fde047; }
+    .friends-link { background: var(--card-dark); border: 1px dashed var(--border); border-radius: 14px; padding: 10px; font-size: 0.78rem; word-break: break-all; text-align: center; user-select: text; -webkit-user-select: text; }
+    .friends-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .friends-stat { text-align: center; color: var(--muted); font-weight: 700; font-size: 0.84rem; }
+    .friends-stat b { color: var(--text); }
+    .lb-row[onclick] { cursor: pointer; }
+    .lb-row[onclick]:active { transform: scale(0.98); }
+    .lb-week { background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.45); border-radius: 14px; padding: 9px 12px; font-size: 0.78rem; font-weight: 700; line-height: 1.45; text-align: center; }
+    .lb-week b { color: #fde047; }
+    .prof-head { display: flex; align-items: center; gap: 12px; }
+    .prof-lvl { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; font-size: 1.1rem; color: #fde047; background: var(--card-dark); border: 3px solid #a78bfa; }
+    .prof-title { font-weight: 900; font-size: 1rem; color: #fde047; }
+    .prof-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .prof-stats div { background: var(--card-dark); border: 1px solid var(--border); border-radius: 14px; padding: 9px; text-align: center; display: flex; flex-direction: column; }
+    .prof-stats b { font-size: 1rem; font-variant-numeric: tabular-nums; }
+    .prof-stats span { font-size: 0.7rem; color: var(--muted); font-weight: 700; }
+    .prof-clips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .prof-clip { aspect-ratio: 19 / 13; border-radius: 10px; overflow: hidden; border: 2px solid var(--rc); background: var(--card-dark); display: grid; place-items: center; }
+    .prof-clip img { width: 100%; height: 100%; object-fit: cover; }
+    .prof-clip.locked { opacity: 0.45; filter: grayscale(0.7); font-size: 1.1rem; }
+    .seg button[data-risk="duels"].active { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+    .duel-card { background: var(--card); border: 1px solid var(--border); border-radius: 22px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .duel-title { font-weight: 900; font-size: 1rem; }
+    .duel-create { min-height: 52px; border: none; border-radius: 20px; background: linear-gradient(135deg, #ef4444, #b91c1c); color: #fff; font-weight: 900; font-size: 1rem; box-shadow: 0 8px 22px rgba(239, 68, 68, 0.35); }
+    .duel-create:disabled { opacity: 0.5; }
+    .duel-sub { font-weight: 900; font-size: 0.9rem; display: flex; align-items: center; justify-content: space-between; padding: 2px 4px; }
+    .duel-refresh { border: 1px solid var(--border); background: var(--card); border-radius: 10px; width: 34px; height: 30px; font-size: 1rem; }
+    .duel-list { display: flex; flex-direction: column; gap: 8px; }
+    .duel-row { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 10px 12px; }
+    .duel-row.won { border-color: #22c55e; }
+    .duel-row.lost { border-color: rgba(239, 68, 68, 0.5); }
+    .duel-row.muted { opacity: 0.55; }
+    .duel-info { flex: 1; min-width: 0; }
+    .duel-who { font-weight: 900; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .duel-who span { color: #ef4444; }
+    .duel-actions { display: flex; gap: 6px; }
+    .duel-row .bank-action { flex-shrink: 0; }
+    .duel-tag { font-size: 0.72rem; color: var(--muted); font-weight: 800; }
+    .battle-arena { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: start; }
+    .battle-vs { align-self: center; font-weight: 900; color: #ef4444; font-size: 1.1rem; }
+    .battle-col { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 16px; border: 2px solid var(--border); background: var(--card-dark); transition: border-color 0.3s, box-shadow 0.3s; }
+    .battle-col.winner { border-color: #22c55e; box-shadow: 0 0 22px rgba(34, 197, 94, 0.45); }
+    .battle-name { font-weight: 900; text-align: center; font-size: 0.86rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .battle-total { text-align: center; font-weight: 900; color: #86efac; font-variant-numeric: tabular-nums; }
+    .battle-slot { position: relative; aspect-ratio: 19 / 13; border-radius: 12px; overflow: hidden; background: rgba(255,255,255,0.04); border: 2px solid var(--border); display: grid; place-items: center; }
+    .battle-slot img { width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%; }
+    .battle-slot.spinning img { filter: blur(1px) brightness(0.9); }
+    .battle-slot.landed { border-color: var(--rc); box-shadow: 0 0 14px var(--rc); }
+    .battle-q { font-size: 1.4rem; color: var(--muted); font-weight: 900; }
+    .battle-val { position: absolute; left: 4px; right: 4px; bottom: 3px; text-align: center; font-size: 0.72rem; font-weight: 900; background: rgba(2, 6, 23, 0.75); border-radius: 8px; padding: 1px 0; }
+    .battle-result { text-align: center; font-weight: 900; font-size: 1.05rem; min-height: 1.4em; }
+    .battle-result.win { color: #86efac; }
+    .battle-result.lose { color: #fca5a5; }
+
+    .lb-seg button { flex-direction: column; gap: 1px; font-size: 0.62rem; line-height: 1.1; min-height: 44px; padding: 3px 1px; }
+    .lb-seg .lb-ico { font-size: 1rem; }
+    #profileModal, #battleModal { z-index: 960; }
   </style>
 </head>
 <body>
@@ -3346,6 +3433,7 @@
           </div>
           <div class="plate-shadow" id="plateShadow"></div>
         </div>
+        <button class="stage-share" id="stageShareBtn" onclick="shareLastDrop()" aria-label="Поделиться">📤</button>
         <div class="rarity-badge" id="rarityBadge">Обычная крутка</div>
       </main>
 
@@ -3369,6 +3457,11 @@
         <button class="bailout-btn" id="bailoutBtn">🆘 Пособие</button>
 
         <div class="chances" id="chancesBar"></div>
+
+        <div class="soc-row">
+          <button class="soc-btn" id="tasksBtn" onclick="openTasks()">📅 Задания <span class="soc-badge" id="tasksBadge">0/3</span></button>
+          <button class="soc-btn" id="friendsBtn" onclick="openFriends()">👥 Друзья <span class="soc-badge gold">+5 000 ₽</span></button>
+        </div>
       </div>
     </section>
 
@@ -3411,6 +3504,7 @@
       <div class="seg risk-switch">
         <button data-risk="upgrader" class="active">⚡ Апгрейд</button>
         <button data-risk="contracts">📜 Контракт</button>
+        <button data-risk="duels">⚔️ Дуэли</button>
       </div>
 
       <!-- Апгрейдер -->
@@ -3510,6 +3604,29 @@
           </div>
         </div>
         <div class="picker-list" id="contractPickerList"></div>
+      </div>
+
+      <!-- Дуэли -->
+      <div class="panel risk-panel" id="tab-duels">
+        <div class="duel-card">
+          <div class="duel-title">⚔️ Новая дуэль</div>
+          <div class="page-hint">Как батлы кейсов: оба открывают одинаковые кейсы с мемами, у кого дороже выпало — забирает <b>всё</b>. Крутит сервер, подкрутить нельзя.</div>
+          <div class="seg" id="duelModeSeg">
+            <button data-mode="normal" class="active">🎲 Обычный · 500 ₽</button>
+            <button data-mode="super">🔥 Супер · 3 000 ₽</button>
+          </div>
+          <div class="seg" id="duelRoundsSeg">
+            <button data-rounds="1" class="active">1 кейс</button>
+            <button data-rounds="2">2</button>
+            <button data-rounds="3">3</button>
+            <button data-rounds="5">5</button>
+          </div>
+          <button class="duel-create" id="duelCreateBtn" onclick="createDuel()">⚔️ Создать дуэль</button>
+        </div>
+        <div class="duel-sub">🟢 Открытые дуэли <button class="duel-refresh" onclick="loadDuels(true)">↻</button></div>
+        <div class="duel-list" id="duelOpenList"></div>
+        <div class="duel-sub">📜 Мои дуэли</div>
+        <div class="duel-list" id="duelMineList"></div>
       </div>
     </section>
 
@@ -3618,6 +3735,7 @@
           <label class="toggle-row"><span>🎵 Музыка</span><input type="checkbox" id="setMusicToggle" /></label>
           <div class="vol-row">🔉 <input type="range" id="setMusicVol" min="0" max="1" step="0.05" aria-label="Громкость музыки" /></div>
           <label class="toggle-row"><span>📳 Вибрация<small>Отклик при крутках (в Telegram)</small></span><input type="checkbox" id="setHapticsToggle" /></label>
+          <label class="toggle-row"><span>🔔 Уведомления от бота<small>Колесо, дуэли, турнир, «тебя обогнали»</small></span><input type="checkbox" id="setNotifyToggle" /></label>
           <label class="toggle-row"><span>⚡ Быстрые крутки<small>Только рулетка: результат сразу. Апгрейд, контракт и колесо — всегда с анимацией</small></span><input type="checkbox" id="setSkipAnimToggle" /></label>
         </div>
       </div>
@@ -3679,6 +3797,47 @@
   </div>
 
   <!-- Трасса -->
+  <div class="modal-overlay" id="tasksModal">
+    <div class="modal-box">
+      <div class="modal-header"><h2>📅 Задания дня</h2><button class="close-modal-btn" onclick="closeModalById('tasksModal')">✕</button></div>
+      <div class="streak-card" id="streakCard"></div>
+      <div class="task-list" id="taskList"></div>
+      <div class="page-hint" id="tasksHint" style="text-align:center"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="friendsModal">
+    <div class="modal-box">
+      <div class="modal-header"><h2>👥 Пригласи друзей</h2><button class="close-modal-btn" onclick="closeModalById('friendsModal')">✕</button></div>
+      <div class="friends-card">
+        <div class="friends-big">+5 000 ₽ тебе и другу</div>
+        <div class="page-hint" style="text-align:center">Друг заходит по твоей ссылке, жмёт «Старт» у бота и открывает игру — бонус получаете оба.</div>
+        <div class="friends-link" id="friendsLink">…</div>
+        <div class="friends-btns">
+          <button class="bank-action btn-green" onclick="shareInvite()">📤 Отправить другу</button>
+          <button class="bank-action btn-outline" onclick="copyInvite()">📋 Скопировать</button>
+        </div>
+        <div class="friends-stat" id="friendsStat"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="profileModal">
+    <div class="modal-box">
+      <div class="modal-header"><h2 id="profileTitle">👤 Игрок</h2><button class="close-modal-btn" onclick="closeModalById('profileModal')">✕</button></div>
+      <div id="profileBody"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="battleModal">
+    <div class="modal-box battle-box">
+      <div class="modal-header"><h2 id="battleTitle">⚔️ Дуэль</h2><button class="close-modal-btn" onclick="closeBattle()">✕</button></div>
+      <div class="battle-arena" id="battleArena"></div>
+      <div class="battle-result" id="battleResult"></div>
+      <button class="bank-action btn-outline" id="battleSkipBtn" onclick="skipBattle()">⏩ Пропустить анимацию</button>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="lbModal">
     <div class="modal-box lb-modal-box">
       <div class="modal-header">
@@ -3686,11 +3845,13 @@
         <button class="close-modal-btn" aria-label="Закрыть" onclick="closeLeaderboard()">✕</button>
       </div>
       <div class="seg lb-seg" id="lbSeg">
-        <button data-lb="balance" class="active">💰 Богачи</button>
-        <button data-lb="level">⭐ Уровень</button>
-        <button data-lb="clips">🎬 Мемчики</button>
-        <button data-lb="legend">👑 Легенды</button>
+        <button data-lb="balance" class="active"><span class="lb-ico">💰</span>Богачи</button>
+        <button data-lb="level"><span class="lb-ico">⭐</span>Уровень</button>
+        <button data-lb="clips"><span class="lb-ico">🎬</span>Мемчики</button>
+        <button data-lb="legend"><span class="lb-ico">👑</span>Легенды</button>
+        <button data-lb="week"><span class="lb-ico">🏁</span>Неделя</button>
       </div>
+      <div class="lb-week" id="lbWeek"></div>
       <div class="lb-list" id="lbList"></div>
       <div class="lb-me" id="lbMe"></div>
     </div>
@@ -5791,7 +5952,7 @@
       }
       document.getElementById('memeModalTitle').textContent = m.name;
       document.getElementById('memeModalMeta').innerHTML =
-        `<span style="color:${r.color}">${r.name}</span><span>💰 ${fmtMoney(p.sellPrice)}</span>`;
+        `<span style="color:${r.color}">${r.name}</span><span>💰 ${fmtMoney(p.sellPrice)}</span><button class="meme-share" onclick="shareMemeItem('${p.id}')">📤 Поделиться</button>`;
       const viewer = document.getElementById('memeViewer');
       viewer.style.setProperty('--mc', r.color);
       viewer.style.setProperty('--mcs', r.color + '66');
@@ -6599,6 +6760,9 @@
 
           addItem(finalPlate);
           lastAddedId = finalPlate.id;
+          taskProgress('spins');
+          if (activeKind === 'car') taskProgress('clipSpins');
+          if (finalRarity.id === 'epic' || finalRarity.id === 'legendary') taskProgress('epic');
           grantXp(xpGain);
           saveState();
           updateAllUI();
@@ -6810,6 +6974,7 @@
             playWinSound('legendary');
 
             banner.className = 'result-banner win';
+            taskProgress('upgradeWin');
             banner.textContent = `🎉 ПОБЕДА! Получен ${formatItemShort(newPlate)} (${fmtMoney(newPlate.sellPrice)})`;
             document.getElementById('wheelSubText').textContent = 'Апгрейд успешен!';
           } else {
@@ -6897,6 +7062,7 @@
 
       banner.className = 'result-banner win';
       banner.textContent = kind === 'car' ? '📜 Склеиваем мемчики по контракту...' : '📜 Склеиваем мемы по контракту...';
+      taskProgress('contract');
       updateAllUI();
 
       [0, 150, 310, 480, 660, 860].forEach((ms, i) => {
@@ -6953,6 +7119,7 @@
         if (String(selectedUpgradeId) === String(id)) selectedUpgradeId = null;
         selectedContractIds = selectedContractIds.filter(cid => cid !== String(id));
         changeBalance(sold.sellPrice);
+        if (itemKind(sold) === 'car') taskProgress('dupes');
         playTone(640, 0.08, 'sine', 0.09);
         haptic('light');
         showToast(`Продано: ${formatItemShort(sold)} за +${fmtMoney(sold.sellPrice)}`);
@@ -6969,6 +7136,7 @@
       const total = dupes.reduce((sum, c) => sum + c.sellPrice, 0);
       const ids = new Set(dupes.map(c => String(c.id)));
       state.cars = state.cars.filter(c => !ids.has(String(c.id)));
+      taskProgress('dupes', dupes.length);
       changeBalance(total);
       spawnParticlesFromEl(document.getElementById('sellAllCarsBtn'), ['#ef4444', '#fca5a5', '#fde047'], 35, 7);
       playTone(740, 0.14, 'triangle', 0.12);
@@ -8517,7 +8685,17 @@
     }
 
     function canSpinWheel() {
-      return hasInfiniteWheel() || state.daily.lastSpin !== todayKey();
+      return hasInfiniteWheel() || serverNow() >= wheelReadyAt();
+    }
+
+    // Колесо: следующая крутка через 24 часа после прошлой (время сервера)
+    const WHEEL_COOLDOWN = 24 * 3600 * 1000;
+    function serverNow() { return Date.now() + (state.serverOffset || 0); }
+    function wheelReadyAt() {
+      if (state.daily.nextWheelAt) return state.daily.nextWheelAt;
+      if (state.daily.lastSpinAt) return state.daily.lastSpinAt + WHEEL_COOLDOWN;
+      if (state.daily.lastSpin === todayKey()) { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1).getTime(); }
+      return 0;
     }
 
     function makeJackpotPlate() {
@@ -8599,9 +8777,7 @@
       const btnText = document.getElementById('wheelBtnText');
       const available = canSpinWheel();
 
-      const now = new Date();
-      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      const left = formatTimeLeft(midnight - now);
+      const left = formatTimeLeft(wheelReadyAt() - serverNow());
 
       box.classList.toggle('ready', available);
       btn.classList.toggle('ready', available);
@@ -8634,7 +8810,7 @@
       btn.disabled = isBusy() || !available;
       btn.textContent = isWheelSpinning
         ? '🎡 КРУТИМ...'
-        : (available ? '🎡 КРУТИТЬ БЕСПЛАТНО' : '🔒 УЖЕ КРУЧЕНО СЕГОДНЯ');
+        : (available ? '🎡 КРУТИТЬ БЕСПЛАТНО' : `🔒 ЧЕРЕЗ ${formatTimeLeft(wheelReadyAt() - serverNow())}`);
       updateFortuneTimer();
 
       const sectors = getWheelSectors();
@@ -8653,11 +8829,11 @@
       `).join('');
     }
 
-    function spinFortune() {
+    function spinFortune(forcedIdx = null, nextAt = 0) {
       if (isBusy()) return;
       ensureDailyPrizes();
-      if (!canSpinWheel()) {
-        showToast('Колесо уже крутили сегодня. Возвращайтесь завтра!');
+      if (forcedIdx == null && !canSpinWheel()) {
+        showToast(`🎡 Следующая крутка через ${formatTimeLeft(wheelReadyAt() - serverNow())}`);
         return;
       }
       if (state.garage.length >= getMaxGarageCapacity()) {
@@ -8665,14 +8841,17 @@
         return;
       }
 
-      // Выбор сектора по весам
+      // Выбор сектора по весам (в Telegram его выбирает сервер)
       const sectors = getWheelSectors();
-      const roll = Math.random() * 100;
-      let acc = 0;
       let winIdx = sectors.length - 1;
-      for (let i = 0; i < sectors.length; i++) {
-        acc += sectors[i].chance;
-        if (roll < acc) { winIdx = i; break; }
+      if (forcedIdx != null && forcedIdx >= 0 && forcedIdx < sectors.length) winIdx = forcedIdx;
+      else {
+        const roll = Math.random() * 100;
+        let acc = 0;
+        for (let i = 0; i < sectors.length; i++) {
+          acc += sectors[i].chance;
+          if (roll < acc) { winIdx = i; break; }
+        }
       }
       const sector = sectors[winIdx];
       const prize = { ...state.daily.prizes[winIdx], id: makeId() };
@@ -8680,6 +8859,9 @@
       // Сразу фиксируем крутку и приз (защита от перезагрузки страницы)
       state.daily.lastSpin = todayKey();
       state.daily.pending = prize;
+      state.daily.lastSpinAt = Date.now();
+      state.daily.nextWheelAt = nextAt || (serverNow() + WHEEL_COOLDOWN);
+      taskProgress('wheel');
       saveState();
 
       isWheelSpinning = true;
@@ -8871,7 +9053,7 @@
       if (name === 'spin') currentPage = 'spin';
       else if (name === 'garage' || name === 'plates') { currentPage = 'garage'; garageView = 'plates'; }
       else if (name === 'cars') { currentPage = 'garage'; garageView = 'cars'; }
-      else if (name === 'upgrader' || name === 'contracts') { currentPage = 'risk'; riskTab = name; }
+      else if (name === 'upgrader' || name === 'contracts' || name === 'duels') { currentPage = 'risk'; riskTab = name; if (name === 'duels') setTimeout(() => loadDuels(true), 50); }
       else if (name === 'risk') currentPage = 'risk';
       else if (name === 'shop') { currentPage = 'shop'; shopView = 'shop'; }
       else if (name === 'bank') { currentPage = 'shop'; shopView = 'bank'; }
@@ -8898,6 +9080,7 @@
         xp: Math.floor(state.xp || 0),
         level: getLevelInfo().level,
         clips: clipOwnedCount(),
+        clipIds: Object.keys(clipGroups()),
         legend: state.legendCount || 0,
         spins: state.spins || 0
       };
@@ -8927,6 +9110,7 @@
       if (by === 'level') return `Ур. ${row.level}`;
       if (by === 'clips') return `${row.clips}/${CLIPS.length} 🎬`;
       if (by === 'legend') return `${row.legend} 👑`;
+      if (by === 'week') return `${row.week} 👑`;
       return fmtMoney(row.balance);
     }
 
@@ -8950,9 +9134,16 @@
       const go = () => fetch(`${LB_URL}/top?by=${by}&me=${meId}`).then(r => r.json()).then(data => {
         if (my !== LB.loading) return;
         if (!data || !Array.isArray(data.top)) throw new Error('bad');
+        const wk = document.getElementById('lbWeek');
+        if (by === 'week' && data.endsAt) {
+          const left = Math.max(0, data.endsAt - serverNow());
+          const d = Math.floor(left / 86400000), h = Math.floor((left % 86400000) / 3600000);
+          wk.innerHTML = `🏁 Кто выбьет больше легендарок за неделю. До конца: <b>${d} д ${h} ч</b><br>Призы: 🥇 ${fmtMoney(data.prizes[0])} · 🥈 ${fmtMoney(data.prizes[1])} · 🥉 ${fmtMoney(data.prizes[2])}`;
+          wk.style.display = '';
+        } else wk.style.display = 'none';
         list.innerHTML = data.top.length ? data.top.map((row, i) => {
           const place = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : String(i + 1);
-          return `<div class="lb-row ${row.isMe ? 'me' : ''}"><span class="lb-place">${place}</span><span class="lb-name">${lbEscape(row.name)}${row.isMe ? ' (ты)' : ''}</span><span class="lb-val">${lbValue(row, by)}</span></div>`;
+          return `<div class="lb-row ${row.isMe ? 'me' : ''}" ${row.pid ? `onclick="openProfile('${row.pid}')"` : ''}><span class="lb-place">${place}</span><span class="lb-name">${lbEscape(row.name)}${row.isMe ? ' (ты)' : ''}</span><span class="lb-val">${lbValue(row, by)}</span></div>`;
         }).join('') : '<div class="lb-empty">Пока никого нет — будь первым!</div>';
         if (!inTelegram) meBox.innerHTML = 'Открой игру через бота в Telegram, чтобы попасть в топ.';
         else if (lbCheating()) meBox.innerHTML = 'С включёнными DEV-читами результат в топ не отправляется.';
@@ -8984,6 +9175,470 @@
       haptic('select');
       renderLeaderboard();
     }));
+
+
+    // ===================== СОЦИАЛЬНОЕ: сервер, задания, друзья, профили, дуэли =====================
+    const SOC = { me: null, busy: false, lastSync: 0, duelMode: 'normal', duelRounds: 1, duelTimer: null, battle: null };
+    // Новые функции включаются, только если сервер уже обновлён (version >= 2)
+    const socOn = () => Boolean(LB_URL && inTelegram && SOC.v2);
+    if (LB_URL) fetch(LB_URL + '/').then(r => r.json()).then(d => { SOC.v2 = Boolean(d && d.version >= 2); if (SOC.v2) socSync(true); }).catch(() => {});
+
+    function socApi(path, body = {}) {
+      return fetch(LB_URL + path, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData: tg.initData, ...body })
+      }).then(r => r.json());
+    }
+
+    function closeModalById(id) { document.getElementById(id).classList.remove('open'); }
+    ['tasksModal', 'friendsModal', 'profileModal'].forEach(id => {
+      document.getElementById(id).addEventListener('click', e => { if (e.target.id === id) closeModalById(id); });
+    });
+
+    // Синхронизация с сервером: время, колесо, серия входов, награды
+    async function socSync(force = false) {
+      if (!socOn() || SOC.busy) return;
+      if (!force && Date.now() - SOC.lastSync < 60000) return;
+      SOC.busy = true;
+      try {
+        let me = await socApi('/me');
+        if (!me || me.error || typeof me.serverNow !== 'number') return;
+        state.serverOffset = me.serverNow - Date.now();
+        if (me.wheelNextAt) state.daily.nextWheelAt = me.wheelNextAt;
+        else if (state.daily.nextWheelAt && state.daily.nextWheelAt > me.serverNow) state.daily.nextWheelAt = 0;
+        if (!me.checkedToday) {
+          const ci = await socApi('/checkin');
+          if (ci && ci.ok && !ci.already) me = await socApi('/me');
+        }
+        SOC.me = me;
+        state.settings.botNotify = me.notify;
+        if (me.rewards && me.rewards.length) {
+          const res = await socApi('/claim', { ids: me.rewards.map(r => r.id) });
+          if (res && res.total > 0) {
+            changeBalance(res.total);
+            spawnParticlesFromEl(document.getElementById('balanceBox'), ['#22c55e', '#86efac', '#fde047'], 30, 7);
+            playTone(740, 0.14, 'triangle', 0.1);
+            res.claimed.forEach((c, i) => setTimeout(() => showToast(`🎁 ${c.reason}: +${fmtMoney(c.amount)}`), 400 + i * 1600));
+          }
+        }
+        SOC.lastSync = Date.now();
+        saveState();
+        updateAllUI();
+        renderSocialButtons();
+      } catch (e) {
+      } finally {
+        SOC.busy = false;
+      }
+    }
+    setTimeout(() => socSync(true), 1500);
+    setInterval(() => socSync(false), 120000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) socSync(true); });
+
+    // Колесо через сервер
+    async function spinFortuneServer() {
+      if (isBusy()) return;
+      if (!socOn() || hasInfiniteWheel()) { spinFortune(); return; }
+      if (state.garage.length >= getMaxGarageCapacity()) { showToast('Дом мамы птицы переполнен! Освободите место для приза.'); return; }
+      const btn = document.getElementById('fortuneSpinBtn');
+      btn.disabled = true;
+      try {
+        const res = await socApi('/wheel');
+        if (res && typeof res.serverNow === 'number') state.serverOffset = res.serverNow - Date.now();
+        if (res && res.ok) { spinFortune(res.index, res.nextAt); return; }
+        if (res && res.nextAt) {
+          state.daily.nextWheelAt = res.nextAt;
+          saveState();
+          showToast(`🎡 Следующая крутка через ${formatTimeLeft(res.nextAt - serverNow())}`);
+        } else showToast('⚠️ Не удалось связаться с сервером. Попробуй ещё раз.');
+      } catch (e) {
+        showToast('⚠️ Нет связи с сервером. Проверь интернет.');
+      } finally {
+        updateAllUI();
+      }
+    }
+
+    // ---------- задания дня ----------
+    const TASK_POOL = [
+      { id: 'spins', goal: 20, reward: 2000, text: 'Сделай 20 круток' },
+      { id: 'epic', goal: 1, reward: 3000, text: 'Выбей эпик или легендарку' },
+      { id: 'clipSpins', goal: 5, reward: 2500, text: 'Покрути мемчики 5 раз' },
+      { id: 'upgradeWin', goal: 1, reward: 2500, text: 'Выиграй апгрейд' },
+      { id: 'contract', goal: 1, reward: 2000, text: 'Подпиши контракт' },
+      { id: 'dupes', goal: 1, reward: 1500, text: 'Продай дубль мемчика' },
+      { id: 'wheel', goal: 1, reward: 1000, text: 'Покрути колесо фортуны' },
+      { id: 'duel', goal: 1, reward: 3000, text: 'Сыграй дуэль' }
+    ];
+    const taskDay = () => (SOC.me && SOC.me.day) || todayKey();
+
+    function ensureTasks() {
+      const day = taskDay();
+      if (state.tasks && state.tasks.day === day && Array.isArray(state.tasks.list)) return state.tasks;
+      let h = 0;
+      for (const ch of day) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+      const pool = [...TASK_POOL];
+      const list = [];
+      while (list.length < 3 && pool.length) {
+        h = (h * 1103515245 + 12345) >>> 0;
+        const t = pool.splice(h % pool.length, 1)[0];
+        list.push({ id: t.id, progress: 0, claimed: false });
+      }
+      state.tasks = { day, list };
+      return state.tasks;
+    }
+
+    function taskProgress(id, amount = 1) {
+      const t = ensureTasks();
+      const item = t.list.find(x => x.id === id);
+      if (!item || item.claimed) return;
+      const def = TASK_POOL.find(x => x.id === id);
+      const before = item.progress;
+      item.progress = Math.min(def.goal, item.progress + amount);
+      if (before < def.goal && item.progress >= def.goal) showToast(`📅 Задание выполнено: «${def.text}» — забери награду!`);
+      saveState();
+      renderSocialButtons();
+    }
+
+    window.claimTask = function(id) {
+      const t = ensureTasks();
+      const item = t.list.find(x => x.id === id);
+      const def = TASK_POOL.find(x => x.id === id);
+      if (!item || !def || item.claimed || item.progress < def.goal) return;
+      item.claimed = true;
+      changeBalance(def.reward);
+      grantXp(Math.round(def.reward / 50));
+      playTone(880, 0.12, 'triangle', 0.1);
+      haptic('success');
+      showToast(`📅 +${fmtMoney(def.reward)} за задание`);
+      saveState();
+      renderTasks();
+      renderSocialButtons();
+      updateAllUI();
+    };
+
+    function renderTasks() {
+      const t = ensureTasks();
+      const streak = SOC.me ? SOC.me.streak : 0;
+      document.getElementById('streakCard').innerHTML = socOn()
+        ? `🔥 Серия входов: <b>${streak} ${streak === 1 ? 'день' : streak > 1 && streak < 5 ? 'дня' : 'дней'}</b><br><small>Заходи каждый день: +500 ₽ за каждый день серии (до 3 500 ₽ на 7-й день и дальше). Пропустишь день — серия начнётся заново.</small>`
+        : '🔥 Серия входов работает, когда игра открыта через бота в Telegram.';
+      document.getElementById('taskList').innerHTML = t.list.map(item => {
+        const def = TASK_POOL.find(x => x.id === item.id);
+        const done = item.progress >= def.goal;
+        const pct = Math.round((item.progress / def.goal) * 100);
+        return `<div class="task-row ${item.claimed ? 'claimed' : done ? 'done' : ''}">
+          <div class="task-info"><div class="task-text">${def.text}</div>
+            <div class="task-bar"><i style="width:${pct}%"></i></div>
+            <div class="task-sub">${item.progress} / ${def.goal} · награда ${fmtMoney(def.reward)}</div></div>
+          ${item.claimed ? '<span class="task-ok">✅</span>' : `<button class="bank-action btn-green" ${done ? '' : 'disabled'} onclick="claimTask('${item.id}')">Забрать</button>`}
+        </div>`;
+      }).join('');
+      document.getElementById('tasksHint').textContent = 'Новые задания каждый день в 00:00 по Москве.';
+    }
+
+    window.openTasks = function() { renderTasks(); document.getElementById('tasksModal').classList.add('open'); haptic('light'); };
+
+    function renderSocialButtons() {
+      const t = ensureTasks();
+      const ready = t.list.filter(x => !x.claimed && x.progress >= TASK_POOL.find(d => d.id === x.id).goal).length;
+      const claimed = t.list.filter(x => x.claimed).length;
+      const badge = document.getElementById('tasksBadge');
+      badge.textContent = ready ? `🎁 ${ready}` : `${claimed}/${t.list.length}`;
+      badge.classList.toggle('gold', ready > 0);
+      const nt = document.getElementById('setNotifyToggle');
+      if (nt) nt.checked = state.settings.botNotify !== false;
+      const share = document.getElementById('stageShareBtn');
+      if (share) share.classList.toggle('show', Boolean(lastRolledPlate) && !isSpinning);
+    }
+    setInterval(renderSocialButtons, 1000);
+
+    // ---------- приглашения и «поделиться» ----------
+    function inviteLink() {
+      return SOC.me && SOC.me.inviteLink ? SOC.me.inviteLink : 'https://t.me/mellstroy_roulette_bot';
+    }
+    function tgShare(text, link = inviteLink()) {
+      const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+      if (inTelegram && typeof tg.openTelegramLink === 'function') { tg.openTelegramLink(url); return; }
+      if (navigator.share) { navigator.share({ text: text + '\n' + link }).catch(() => {}); return; }
+      window.open(url, '_blank');
+    }
+    window.shareInvite = function() { tgShare('🎰 Залетай в Мелстрой Рулетку — крути мемы с Мелстроем! По моей ссылке тебе +5 000 ₽ 👇'); };
+    window.copyInvite = function() {
+      const link = inviteLink();
+      (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(() => showToast('📋 Ссылка скопирована')).catch(() => showToast(link));
+    };
+    window.openFriends = function() {
+      document.getElementById('friendsLink').textContent = socOn() ? inviteLink() : 'Открой игру через бота в Telegram, чтобы получить свою ссылку.';
+      document.getElementById('friendsStat').innerHTML = socOn() && SOC.me
+        ? `Приглашено друзей: <b>${SOC.me.invited}</b> · заработано <b>${fmtMoney(SOC.me.invited * SOC.me.refBonus)}</b>` : '';
+      document.getElementById('friendsModal').classList.add('open');
+      haptic('light');
+    };
+
+    function shareText(item) {
+      const r = item.rarity || BASE_RARITIES[0];
+      const isClip = itemKind(item) === 'car';
+      const m = isClip ? getCarClip(item) : getPlateMeme(item);
+      const name = m ? m.name : (isClip ? 'Мемчик' : 'Мем');
+      return `${r.id === 'legendary' ? '👑' : '🎰'} Мне выпал ${r.name.toLowerCase()} ${isClip ? 'мемчик' : 'мем'} «${name}» (${fmtMoney(item.sellPrice)}) в Мелстрой Рулетке! Залетай 👇`;
+    }
+    window.shareLastDrop = function() { if (lastRolledPlate) tgShare(shareText(lastRolledPlate)); };
+    window.shareMemeItem = function(id) { const p = findMemeItem(id); if (p) tgShare(shareText(p)); };
+
+    // ---------- профиль игрока ----------
+    window.openProfile = async function(pid) {
+      const body = document.getElementById('profileBody');
+      document.getElementById('profileTitle').textContent = '👤 Игрок';
+      body.innerHTML = '<div class="lb-empty">Загружаем…</div>';
+      document.getElementById('profileModal').classList.add('open');
+      haptic('light');
+      try {
+        const p = await fetch(`${LB_URL}/profile?pid=${encodeURIComponent(pid)}`).then(r => r.json());
+        if (!p || p.error) throw new Error('nf');
+        document.getElementById('profileTitle').textContent = '👤 ' + p.name;
+        const owned = new Set(p.clipIds || []);
+        const order = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+        const clips = [...CLIPS].sort((a, b) => order.indexOf(a.rarity) - order.indexOf(b.rarity));
+        body.innerHTML = `
+          <div class="prof-head"><div class="prof-lvl">${p.level}</div><div><div class="prof-title">${getLevelTitle(p.level)}</div><div class="page-hint">Уровень ${p.level} · крутки: ${p.spins.toLocaleString('ru-RU')}</div></div></div>
+          <div class="prof-stats">
+            <div><b>${fmtMoney(p.balance)}</b><span>баланс</span></div>
+            <div><b>${p.clips}/${CLIPS.length}</b><span>мемчики</span></div>
+            <div><b>${p.legend} 👑</b><span>легендарки</span></div>
+            <div><b>${p.duels.wins}/${p.duels.played}</b><span>дуэли (победы)</span></div>
+          </div>
+          <div class="duel-sub">🎬 Коллекция мемчиков</div>
+          <div class="prof-clips">${clips.map(m => {
+            const r = memeRarity(m.rarity);
+            return owned.has(m.id)
+              ? `<div class="prof-clip" style="--rc:${r.color}" title="${m.name}">${memePosterImg(m.id)}</div>`
+              : `<div class="prof-clip locked" style="--rc:${r.color}">🔒</div>`;
+          }).join('')}</div>`;
+      } catch (e) {
+        body.innerHTML = '<div class="lb-empty">⚠️ Не удалось загрузить профиль.</div>';
+      }
+    };
+
+    // ---------- уведомления ----------
+    document.getElementById('setNotifyToggle').addEventListener('change', (e) => {
+      state.settings.botNotify = e.target.checked;
+      saveState();
+      if (socOn()) socApi('/settings', { notify: e.target.checked }).catch(() => {});
+      showToast(e.target.checked ? '🔔 Бот будет присылать уведомления' : '🔕 Уведомления выключены');
+      if (e.target.checked && socOn() && SOC.me && !SOC.me.startedBot) {
+        setTimeout(() => showToast('Чтобы бот мог писать, открой чат с ботом и нажми «Старт»'), 1800);
+      }
+    });
+
+    // ---------- дуэли ----------
+    function dropMeme(d) {
+      const list = MEMES.filter(m => m.rarity === d.r);
+      return list.length ? list[d.k % list.length] : MEMES[0];
+    }
+    function duelCost() { return (SOC.duelMode === 'super' ? 3000 : 500) * SOC.duelRounds; }
+    function renderDuelControls() {
+      document.querySelectorAll('#duelModeSeg button').forEach(b => b.classList.toggle('active', b.dataset.mode === SOC.duelMode));
+      document.querySelectorAll('#duelRoundsSeg button').forEach(b => b.classList.toggle('active', Number(b.dataset.rounds) === SOC.duelRounds));
+      document.getElementById('duelCreateBtn').textContent = `⚔️ Создать дуэль за ${fmtMoney(duelCost())}`;
+    }
+    document.querySelectorAll('#duelModeSeg button').forEach(b => b.addEventListener('click', () => { SOC.duelMode = b.dataset.mode; haptic('select'); renderDuelControls(); }));
+    document.querySelectorAll('#duelRoundsSeg button').forEach(b => b.addEventListener('click', () => { SOC.duelRounds = Number(b.dataset.rounds); haptic('select'); renderDuelControls(); }));
+
+    function duelRow(b, mine) {
+      const mode = b.mode === 'super' ? '🔥 Супер' : '🎲 Обычный';
+      const head = `<div class="duel-info"><div class="duel-who">${lbEscape(b.creator)}${b.joiner ? ` <span>vs</span> ${lbEscape(b.joiner)}` : ''}</div>
+        <div class="page-hint">#${b.id} · ${mode} · ${b.rounds} ${b.rounds === 1 ? 'кейс' : b.rounds < 5 ? 'кейса' : 'кейсов'} · ставка ${fmtMoney(b.cost)}</div></div>`;
+      if (b.status === 'open') {
+        if (b.own) return `<div class="duel-row">${head}<div class="duel-actions"><button class="bank-action btn-outline" onclick="duelBot(${b.id})">🤖 Бот</button><button class="bank-action btn-red" onclick="duelCancel(${b.id})">✕</button></div></div>`;
+        return `<div class="duel-row">${head}<button class="bank-action btn-green" onclick="duelJoin(${b.id}, ${b.cost})">Вступить</button></div>`;
+      }
+      if (b.status === 'cancelled') return `<div class="duel-row muted">${head}<span class="duel-tag">отменена</span></div>`;
+      const won = b.side != null && b.winner === b.side;
+      return `<div class="duel-row ${won ? 'won' : 'lost'}">${head}<button class="bank-action btn-outline" onclick="duelWatch(${b.id})">${won ? '🏆 +' + fmtMoney(b.prize) : '💀 Смотреть'}</button></div>`;
+    }
+
+    window.loadDuels = async function(show) {
+      renderDuelControls();
+      const openEl = document.getElementById('duelOpenList');
+      const mineEl = document.getElementById('duelMineList');
+      if (!LB_URL) { openEl.innerHTML = '<div class="lb-empty">Дуэли скоро заработают.</div>'; mineEl.innerHTML = ''; return; }
+      if (!inTelegram) { openEl.innerHTML = '<div class="lb-empty">⚔️ Дуэли работают, когда игра открыта через бота в Telegram.</div>'; mineEl.innerHTML = ''; return; }
+      if (!SOC.v2) { openEl.innerHTML = '<div class="lb-empty">⚔️ Дуэли скоро заработают.</div>'; mineEl.innerHTML = ''; return; }
+      if (show) openEl.innerHTML = '<div class="lb-empty">Загружаем…</div>';
+      try {
+        const data = await socApi('/battle/list');
+        SOC.duels = data;
+        openEl.innerHTML = data.open.length ? data.open.map(b => duelRow(b)).join('') : '<div class="lb-empty">Открытых дуэлей нет — создай свою!</div>';
+        mineEl.innerHTML = data.mine.length ? data.mine.map(b => duelRow(b, true)).join('') : '<div class="lb-empty">Ты ещё не играл дуэли.</div>';
+      } catch (e) {
+        openEl.innerHTML = '<div class="lb-empty">⚠️ Не удалось загрузить дуэли.</div>';
+      }
+      clearTimeout(SOC.duelTimer);
+      SOC.duelTimer = setTimeout(() => { if (currentPage === 'risk' && riskTab === 'duels' && !document.hidden) loadDuels(false); }, 15000);
+    };
+
+    window.createDuel = async function() {
+      if (!socOn()) { showToast('Дуэли работают через бота в Telegram'); return; }
+      const cost = duelCost();
+      if (!hasNoLimits() && state.balance < cost) { showToast(`Нужно ${fmtMoney(cost)} для дуэли`); haptic('warning'); return; }
+      const btn = document.getElementById('duelCreateBtn');
+      btn.disabled = true;
+      changeBalance(-cost);
+      saveState();
+      try {
+        const res = await socApi('/battle/create', { mode: SOC.duelMode, rounds: SOC.duelRounds });
+        if (!res.ok) throw new Error(res.error || 'Ошибка');
+        showToast(`⚔️ Дуэль #${res.id} создана. Ждём соперника — или позови бота 🤖`);
+        haptic('success');
+      } catch (e) {
+        changeBalance(cost);
+        saveState();
+        showToast('⚠️ ' + e.message);
+      } finally {
+        btn.disabled = false;
+        loadDuels(false);
+      }
+    };
+
+    window.duelJoin = async function(id, cost) {
+      if (!hasNoLimits() && state.balance < cost) { showToast(`Нужно ${fmtMoney(cost)} для дуэли`); haptic('warning'); return; }
+      changeBalance(-cost);
+      saveState();
+      try {
+        const res = await socApi('/battle/join', { id });
+        if (!res.ok) throw new Error(res.error || 'Ошибка');
+        taskProgress('duel');
+        playBattle(res.battle);
+      } catch (e) {
+        changeBalance(cost);
+        saveState();
+        showToast('⚠️ ' + e.message);
+        loadDuels(false);
+      }
+    };
+
+    window.duelBot = async function(id) {
+      try {
+        const res = await socApi('/battle/bot', { id });
+        if (!res.ok) throw new Error(res.error || 'Ошибка');
+        taskProgress('duel');
+        playBattle(res.battle);
+      } catch (e) { showToast('⚠️ ' + e.message); loadDuels(false); }
+    };
+
+    window.duelCancel = async function(id) {
+      try {
+        const res = await socApi('/battle/cancel', { id });
+        if (!res.ok) throw new Error(res.error || 'Ошибка');
+        showToast('Дуэль отменена — ставка вернётся на баланс');
+        socSync(true);
+      } catch (e) { showToast('⚠️ ' + e.message); }
+      loadDuels(false);
+    };
+
+    window.duelWatch = async function(id) {
+      try {
+        const res = await socApi('/battle/get', { id });
+        if (res.ok) playBattle(res.battle, true);
+      } catch (e) {}
+    };
+
+    // Анимация дуэли: два столбца, кейсы открываются по очереди
+    function playBattle(b, replay = false) {
+      const me = b.side == null ? 0 : b.side;
+      const sides = me === 0 ? [{ name: b.creator, drops: b.data.a, idx: 0 }, { name: b.joiner, drops: b.data.c, idx: 1 }]
+                             : [{ name: b.joiner, drops: b.data.c, idx: 1 }, { name: b.creator, drops: b.data.a, idx: 0 }];
+      document.getElementById('battleTitle').textContent = `⚔️ Дуэль #${b.id}`;
+      document.getElementById('battleResult').innerHTML = '';
+      document.getElementById('battleArena').innerHTML = sides.map((s, si) => `
+        <div class="battle-col" id="bcol${si}">
+          <div class="battle-name">${si === 0 && b.side != null ? 'Ты' : lbEscape(s.name)}</div>
+          <div class="battle-total" id="btot${si}">0 ₽</div>
+          ${s.drops.map((d, ri) => `<div class="battle-slot" id="bslot${si}_${ri}"><span class="battle-q">?</span></div>`).join('')}
+        </div>`).join('<div class="battle-vs">VS</div>');
+      document.getElementById('battleModal').classList.add('open');
+      document.getElementById('battleSkipBtn').style.display = '';
+      const token = (SOC.battleToken = (SOC.battleToken || 0) + 1);
+      const totals = [0, 0];
+      let round = 0;
+      let done = false;
+      const alive = () => token === SOC.battleToken && !done;
+      const pool = MEMES.filter(m => m.rarity !== 'legendary' || Math.random() < 0.3);
+
+      const reveal = (si, ri) => {
+        const d = sides[si].drops[ri];
+        const m = dropMeme(d);
+        const r = memeRarity(d.r);
+        const slot = document.getElementById(`bslot${si}_${ri}`);
+        slot.className = 'battle-slot landed';
+        slot.style.setProperty('--rc', r.color);
+        slot.innerHTML = `${memePosterImg(m.id)}<span class="battle-val">${fmtMoney(d.v)}</span>`;
+        totals[si] += d.v;
+        document.getElementById(`btot${si}`).textContent = fmtMoney(totals[si]);
+        if (d.r === 'legendary') spawnParticlesFromEl(slot, ['#f59e0b', '#fde047', '#fff'], 40, 8);
+        else if (d.r === 'epic') spawnParticlesFromEl(slot, ['#a855f7', '#e879f9'], 22, 6);
+      };
+
+      const finish = () => {
+        if (done) return;
+        done = true;
+        for (let ri = 0; ri < sides[0].drops.length; ri++) {
+          [0, 1].forEach(si => { const s = document.getElementById(`bslot${si}_${ri}`); if (s && !s.classList.contains('landed')) reveal(si, ri); });
+        }
+        document.getElementById('battleSkipBtn').style.display = 'none';
+        const winnerSide = b.winner === me ? 0 : 1;
+        document.getElementById(`bcol${winnerSide}`).classList.add('winner');
+        const iWon = b.side != null && b.winner === b.side;
+        const res = document.getElementById('battleResult');
+        if (b.side == null) res.innerHTML = `🏆 Победил ${lbEscape(sides[winnerSide].name)} · ${fmtMoney(b.prize)}`;
+        else if (iWon) {
+          res.innerHTML = `🏆 <b>Ты победил!</b> Забираешь ${fmtMoney(b.prize)}`;
+          res.className = 'battle-result win';
+          if (!replay) {
+            spawnParticlesFromEl(document.getElementById('bcol0'), ['#22c55e', '#fde047', '#fff'], 70, 10);
+            playWinSound('epic');
+            haptic('success');
+            socSync(true);
+          }
+        } else {
+          res.innerHTML = `💀 Победил ${lbEscape(sides[1].name)} (${fmtMoney(b.prize)})`;
+          res.className = 'battle-result lose';
+          if (!replay) { playLoseSound(); haptic('error'); }
+        }
+        loadDuels(false);
+      };
+      SOC.battleFinish = finish;
+
+      const step = () => {
+        if (!alive()) return;
+        if (round >= sides[0].drops.length) { setTimeout(() => { if (token === SOC.battleToken) finish(); }, 300); return; }
+        const ri = round;
+        const slots = [0, 1].map(si => document.getElementById(`bslot${si}_${ri}`));
+        slots.forEach(s => s.classList.add('spinning'));
+        let t = 0, delay = 60;
+        const cycle = () => {
+          if (!alive()) return;
+          slots.forEach(s => { const m = pool[Math.floor(Math.random() * pool.length)]; s.innerHTML = memePosterImg(m.id); });
+          playTone(500 + Math.random() * 200, 0.02, 'triangle', 0.03);
+          t += delay; delay *= 1.12;
+          if (t < 1500) setTimeout(cycle, delay);
+          else {
+            reveal(0, ri); reveal(1, ri);
+            playTone(760, 0.08, 'triangle', 0.07);
+            round++;
+            setTimeout(step, 650);
+          }
+        };
+        cycle();
+      };
+      step();
+    }
+
+    window.skipBattle = function() { if (SOC.battleFinish) SOC.battleFinish(); };
+    window.closeBattle = function() {
+      if (SOC.battleFinish && document.getElementById('battleSkipBtn').style.display !== 'none') SOC.battleFinish();
+      SOC.battleToken = (SOC.battleToken || 0) + 1;
+      document.getElementById('battleModal').classList.remove('open');
+    };
 
     function openRisk(which = riskTab) {
       switchTab(which === 'contracts' ? 'contracts' : 'upgrader');
@@ -9574,7 +10229,7 @@
     document.getElementById('modeNormalBtn').addEventListener('click', () => setSpinMode('normal'));
     document.getElementById('modeSuperBtn').addEventListener('click', () => setSpinMode('super'));
     document.getElementById('modeEliteBtn').addEventListener('click', () => setSpinMode('elite'));
-    document.getElementById('fortuneSpinBtn').addEventListener('click', spinFortune);
+    document.getElementById('fortuneSpinBtn').addEventListener('click', () => spinFortuneServer());
     document.getElementById('autoBtn').addEventListener('click', toggleAutoSpin);
 
     function openWheel() {

@@ -4761,6 +4761,7 @@
 
     function grantXp(amount) {
       if (!amount || amount <= 0) return;
+      amount = Math.round(amount * 2.5);
       const before = getLevelInfo().level;
       state.xp += amount;
       const after = getLevelInfo().level;
@@ -10905,7 +10906,7 @@
       const spinIcon = spinMode === 'elite' ? '👑' : (spinMode === 'super' ? '🔥' : (rollKind === 'car' ? '🎬' : '🎲'));
       spinBtn.innerHTML = `
         <span class="sb-main">${spinIcon} КРУТИТЬ ${rollKind === 'car' ? 'МЕМЧИК' : 'МЕМ'}</span>
-        <span class="sb-sub">${costLabel(spinMode)} · +${getSpinXp()} XP</span>`;
+        <span class="sb-sub">${costLabel(spinMode)} · +${Math.round(getSpinXp() * 2.5)} XP</span>`;
       spinBtn.disabled = busy || (!free && state.balance < getCurrentSpinCost());
 
       const bailoutBtn = document.getElementById('bailoutBtn');

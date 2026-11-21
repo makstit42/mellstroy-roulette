@@ -3480,6 +3480,29 @@
     .lock-btn.on { border-color: rgba(250, 204, 21, 0.7); background: rgba(250, 204, 21, 0.14); }
     .sell-one-btn.is-locked { opacity: 0.55; }
     .mini-card.locked-card { box-shadow: 0 0 0 1.5px rgba(250, 204, 21, 0.55); }
+
+    /* Мини-плеер */
+    .mp-card { margin-top: 8px; background: var(--card-dark); border: 1px solid var(--border); border-radius: 18px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .mp-now { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .mp-disc { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; font-size: 1.2rem;
+      background: radial-gradient(circle, #1e293b 22%, #a855f7 23%, #6d28d9 60%, #1e1b4b 61%); }
+    .mp-disc.spin { animation: wheelIcoSpin 3s linear infinite; }
+    .mp-info { min-width: 0; flex: 1; }
+    .mp-title { font-weight: 900; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mp-time { font-size: 0.74rem; color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; }
+    .mp-bar { height: 5px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+    .mp-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #a855f7, #ec4899); transition: width 0.5s linear; }
+    .mp-ctrl { display: grid; grid-template-columns: 1fr 1.3fr 1fr auto; gap: 8px; }
+    .mp-btn { min-height: 44px; border-radius: 14px; border: 1px solid var(--border); background: var(--card); font-size: 1.1rem; color: var(--text, #fff); }
+    .mp-btn.main { background: linear-gradient(135deg, #a855f7, #6d28d9); border: none; color: #fff; font-size: 1.2rem; }
+    .mp-btn.list { padding: 0 12px; }
+    .mp-list { display: none; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
+    .mp-list.open { display: flex; }
+    .mp-item { display: flex; align-items: center; gap: 10px; text-align: left; padding: 9px 10px; border-radius: 12px; border: 1px solid transparent;
+      background: var(--card); color: var(--text, #fff); font-weight: 700; font-size: 0.86rem; }
+    .mp-item span { width: 22px; flex-shrink: 0; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.78rem; }
+    .mp-item.cur { border-color: #a855f7; background: rgba(168, 85, 247, 0.14); }
+    @media (prefers-reduced-motion: reduce) { .mp-disc.spin { animation: none; } }
   </style>
 </head>
 <body>
@@ -3853,6 +3876,17 @@
           <label class="toggle-row"><span>🔊 Звуки</span><input type="checkbox" id="setSoundToggle" /></label>
           <label class="toggle-row"><span>🎵 Музыка</span><input type="checkbox" id="setMusicToggle" /></label>
           <div class="vol-row">🔉 <input type="range" id="setMusicVol" min="0" max="1" step="0.05" aria-label="Громкость музыки" /></div>
+          <div class="mp-card" id="mpCard">
+            <div class="mp-now"><div class="mp-disc" id="mpDisc">🎵</div><div class="mp-info"><div class="mp-title" id="mpTitle">—</div><div class="mp-time" id="mpTime">0:00 / 0:00</div></div></div>
+            <div class="mp-bar"><i id="mpBar"></i></div>
+            <div class="mp-ctrl">
+              <button class="mp-btn" onclick="mpPrev()" aria-label="Предыдущая">⏮</button>
+              <button class="mp-btn main" id="mpPlay" onclick="mpToggle()" aria-label="Играть или пауза">▶</button>
+              <button class="mp-btn" onclick="mpNext()" aria-label="Следующая">⏭</button>
+              <button class="mp-btn list" id="mpListBtn" onclick="mpToggleList()" aria-label="Все песни">📃</button>
+            </div>
+            <div class="mp-list" id="mpList"></div>
+          </div>
           <label class="toggle-row"><span>📳 Вибрация<small>Отклик при крутках (в Telegram)</small></span><input type="checkbox" id="setHapticsToggle" /></label>
           <label class="toggle-row"><span>🔔 Уведомления от бота<small>Колесо, дуэли, турнир, хаммам, «тебя обогнали»</small></span><input type="checkbox" id="setNotifyToggle" /></label>
           <label class="toggle-row"><span>⚡ Быстрые крутки<small>Только рулетка: результат сразу. Апгрейд, контракт и колесо — всегда с анимацией</small></span><input type="checkbox" id="setSkipAnimToggle" /></label>
@@ -6542,12 +6576,19 @@
       s.start(0, offset || 0);
       bgm.src = s;
       bgm.startedAt = ctx.currentTime - (offset || 0);
+      if (typeof renderPlayer === 'function') renderPlayer();
     }
 
     function bgmPlayNext() {
       if (!music.on) return;
       const my = ++bgm.token;
-      const url = bgmUrl(bgmNextIndex());
+      const ti = bgm.forceIdx != null ? bgm.forceIdx : bgmNextIndex();
+      bgm.forceIdx = null;
+      if (bgm.cur != null && bgm.cur >= 0 && bgm.cur !== ti && !bgm.goingBack) { bgm.hist = (bgm.hist || []).concat(bgm.cur).slice(-30); }
+      bgm.goingBack = false;
+      bgm.cur = ti;
+      if (typeof renderPlayer === 'function') renderPlayer();
+      const url = bgmUrl(ti);
       fetch(url).then(r => r.arrayBuffer())
         .then(ab => new Promise((ok, err) => getAudioCtx().decodeAudioData(ab, ok, err)))
         .then(buf => { if (my === bgm.token && music.on) bgmStartBuf(buf, 0); })
@@ -10539,6 +10580,105 @@
       saveState();
       updateAllUI();
     };
+
+
+    // ===================== 🎵 МИНИ-ПЛЕЕР =====================
+    const MUSIC_NAMES = [
+      "Трек 1",
+      "Трек 2",
+      "Трек 3",
+      "Трек 4",
+      "Трек 5",
+      "Трек 6",
+      "Трек 7",
+      "Трек 8",
+      "Трек 9",
+      "Трек 10",
+      "Трек 11",
+      "Трек 12",
+      "Трек 13",
+      "Трек 14",
+      "Трек 15",
+      "Трек 16",
+      "Трек 17",
+      "Трек 18",
+      "Трек 19",
+      "Трек 20",
+      "Трек 21",
+      "Трек 22",
+      "Трек 23",
+      "Трек 24"
+    ];
+    const mpName = (i) => MUSIC_NAMES[i] || `Трек ${i + 1}`;
+    const mpFmt = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+    function mpSwitch(i, back = false) {
+      if (!MUSIC_TRACKS.length) return;
+      bgm.forceIdx = i;
+      bgm.goingBack = back;
+      bgm.offset = null; bgm.buf = null;
+      if (!state.settings.music) { toggleMusic(true); return; }
+      if (!music.on) { startMusic(); return; }
+      bgm.token++;
+      bgmStopSrc();
+      bgmPlayNext();
+    }
+    window.mpNext = function() {
+      haptic('light');
+      bgm.forceIdx = null;
+      bgm.offset = null; bgm.buf = null;
+      if (!state.settings.music) { toggleMusic(true); return; }
+      if (!music.on) { startMusic(); return; }
+      bgm.token++; bgmStopSrc(); bgmPlayNext();
+    };
+    window.mpPrev = function() {
+      haptic('light');
+      const pos = bgm.src && bgm.buf && audioCtx ? audioCtx.currentTime - bgm.startedAt : 0;
+      const hist = bgm.hist || [];
+      if (pos > 3 || !hist.length) { if (bgm.cur >= 0) mpSwitch(bgm.cur, true); return; }
+      const prev = hist.pop();
+      bgm.hist = hist;
+      mpSwitch(prev, true);
+    };
+    window.mpToggle = function() {
+      haptic('light');
+      toggleMusic(!(state.settings.music && music.on));
+      renderPlayer();
+    };
+    window.mpPick = function(i) { haptic('select'); mpSwitch(i); };
+    window.mpToggleList = function() {
+      const l = document.getElementById('mpList');
+      l.classList.toggle('open');
+      renderPlayer();
+    };
+    function renderPlayer() {
+      const card = document.getElementById('mpCard');
+      if (!card) return;
+      const playing = state.settings.music && music.on;
+      const cur = bgm.cur != null && bgm.cur >= 0 ? bgm.cur : -1;
+      document.getElementById('mpTitle').textContent = cur >= 0 ? mpName(cur) : (MUSIC_TRACKS.length ? 'Нажми ▶, чтобы включить музыку' : 'Музыки пока нет');
+      document.getElementById('mpPlay').textContent = playing ? '⏸' : '▶';
+      document.getElementById('mpDisc').classList.toggle('spin', playing && !!bgm.src);
+      const list = document.getElementById('mpList');
+      if (list.classList.contains('open')) {
+        list.innerHTML = MUSIC_TRACKS.map((_, i) => `<button class="mp-item${i === cur ? ' cur' : ''}" onclick="mpPick(${i})"><span>${i === cur && playing ? '🔊' : (i + 1)}</span>${lbEscape(mpName(i))}</button>`).join('');
+        const c = list.querySelector('.cur');
+        if (c && !list.dataset.scrolled) { c.scrollIntoView({ block: 'nearest' }); list.dataset.scrolled = '1'; }
+      } else { list.innerHTML = ''; delete list.dataset.scrolled; }
+      mpTick();
+    }
+    function mpTick() {
+      const bar = document.getElementById('mpBar');
+      if (!bar) return;
+      const dur = bgm.buf ? bgm.buf.duration : 0;
+      let pos = 0;
+      if (bgm.src && bgm.buf && audioCtx) pos = (audioCtx.currentTime - bgm.startedAt) % dur;
+      else if (bgm.offset != null) pos = bgm.offset;
+      document.getElementById('mpTime').textContent = `${mpFmt(pos)} / ${mpFmt(dur)}`;
+      bar.style.width = dur ? `${Math.min(100, pos / dur * 100)}%` : '0%';
+    }
+    setInterval(() => { if (document.getElementById('settingsModal').classList.contains('open')) mpTick(); }, 500);
+    document.getElementById('settingsBtn').addEventListener('click', () => setTimeout(renderPlayer, 30));
+    document.getElementById('setMusicToggle').addEventListener('change', () => setTimeout(renderPlayer, 30));
 
     function openRisk(which = riskTab) {
       switchTab(which === 'contracts' ? 'contracts' : 'upgrader');

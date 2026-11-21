@@ -6673,23 +6673,57 @@
       s.start(0, offset || 0);
       bgm.src = s;
       bgm.startedAt = ctx.currentTime - (offset || 0);
+      setTimeout(() => { if (bgm.src === s) bgmPrefetch(); }, 2500);
       if (typeof renderPlayer === 'function') renderPlayer();
     }
 
     function bgmPlayNext() {
       if (!music.on) return;
       const my = ++bgm.token;
-      const ti = bgm.forceIdx != null ? bgm.forceIdx : bgmNextIndex();
+      let ti;
+      if (bgm.forceIdx != null) ti = bgm.forceIdx;
+      else if (bgm.pre && bgm.pre.i != null) ti = bgm.pre.i;
+      else ti = bgmNextIndex();
       bgm.forceIdx = null;
       if (bgm.cur != null && bgm.cur >= 0 && bgm.cur !== ti && !bgm.goingBack) { bgm.hist = (bgm.hist || []).concat(bgm.cur).slice(-30); }
       bgm.goingBack = false;
       bgm.cur = ti;
       if (typeof renderPlayer === 'function') renderPlayer();
-      const url = bgmUrl(ti);
-      fetch(url).then(r => r.arrayBuffer())
-        .then(ab => new Promise((ok, err) => getAudioCtx().decodeAudioData(ab, ok, err)))
+      let ready;
+      if (bgm.pre && bgm.pre.i === ti) { ready = bgm.pre.p; bgm.pre = null; }
+      else ready = bgmDecode(ti);   // выбран другой трек — заготовленный остаётся следующим
+      ready
         .then(buf => { if (my === bgm.token && music.on) bgmStartBuf(buf, 0); })
         .catch(() => { if (my === bgm.token && music.on) setTimeout(bgmPlayNext, 1500); });
+    }
+
+    // Скачать и раскодировать трек (с обрезкой тишины по краям)
+    function bgmDecode(i) {
+      return fetch(bgmUrl(i)).then(r => r.arrayBuffer())
+        .then(ab => new Promise((ok, err) => getAudioCtx().decodeAudioData(ab, ok, err)))
+        .then(bgmTrim);
+    }
+    function bgmTrim(buf) {
+      try {
+        const ch = buf.getChannelData(0), n = ch.length, thr = 0.003;
+        let a = 0, b = n - 1;
+        while (a < n && Math.abs(ch[a]) < thr) a++;
+        while (b > a && Math.abs(ch[b]) < thr) b--;
+        const pad = Math.floor(buf.sampleRate * 0.03);
+        a = Math.max(0, a - pad); b = Math.min(n - 1, b + pad);
+        if (a < buf.sampleRate * 0.05 && n - 1 - b < buf.sampleRate * 0.05) return buf;
+        const out = getAudioCtx().createBuffer(buf.numberOfChannels, b - a + 1, buf.sampleRate);
+        for (let c = 0; c < buf.numberOfChannels; c++) out.copyToChannel(buf.getChannelData(c).subarray(a, b + 1), c);
+        return out;
+      } catch (e) { return buf; }
+    }
+    // Пока играет трек — заранее готовим следующий
+    function bgmPrefetch() {
+      if (bgm.pre || !MUSIC_TRACKS.length || MUSIC_TRACKS.length < 2) return;
+      const i = bgmNextIndex();
+      const p = bgmDecode(i);
+      p.catch(() => { if (bgm.pre && bgm.pre.p === p) bgm.pre = null; });
+      bgm.pre = { i, p };
     }
 
     function startMusic() {

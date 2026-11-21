@@ -7182,7 +7182,9 @@
           wheelCont.classList.remove('in-green');
 
           if (won) {
-            const newPlate = generateItem(kind, targetRarity, targetPrice, `⚡x${lockedMult}`);
+            const newPlate = (kind === 'plate' && sacrificed && sacrificed.bananas > 0)
+              ? bananaUpgraded(sacrificed, targetPrice, lockedMult)
+              : generateItem(kind, targetRarity, targetPrice, `⚡x${lockedMult}`);
             addItem(newPlate);
             lastAddedId = newPlate.id;
             selectedUpgradeId = String(newPlate.id);
@@ -10706,6 +10708,23 @@
         `<img class="meme-poster live ${cls}" src="media/anim/${mid}.webp" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=MEME.posters['${mid}']||''">`);
     }
 
+
+    // ---------- апгрейд мема с бананом ----------
+    function bananaRarityFor(p, price) {
+      let i = rarityIdx((p.rarity && p.rarity.id) || 'common');
+      const mult = getPriceMultiplier();
+      while (i < BASE_RARITIES.length - 1 && price >= BASE_RARITIES[i + 1].basePrice * mult) i++;
+      return BASE_RARITIES[i];
+    }
+    function bananaUpgraded(p, price, mult) {
+      const m = getPlateMeme(p);
+      return {
+        ...p, id: makeId(), kind: 'plate', memeId: m.id, bananas: p.bananas,
+        rarity: bananaRarityFor(p, price), sellPrice: Math.max(10, Math.round(price)),
+        tag: `🍌 ⚡x${mult}`, fav: false, locked: false
+      };
+    }
+
     function openRisk(which = riskTab) {
       switchTab(which === 'contracts' ? 'contracts' : 'upgrader');
     }
@@ -11009,7 +11028,8 @@
 
       if (selectedPlate) {
         const targetVal = Math.round(selectedPlate.sellPrice * selectedMultiplier);
-        const targetRar = getRarityByTargetPrice(targetVal, kindFactor(upgKind));
+        const targetRar = (upgKind === 'plate' && selectedPlate.bananas > 0)
+          ? bananaRarityFor(selectedPlate, targetVal) : getRarityByTargetPrice(targetVal, kindFactor(upgKind));
         sourceWrap.innerHTML = buildItemHTML(selectedPlate, 'slot');
         document.getElementById('upgSourcePrice').textContent = fmtMoney(selectedPlate.sellPrice);
         targetRarEl.textContent = targetRar.name;

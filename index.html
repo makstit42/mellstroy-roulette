@@ -4139,8 +4139,8 @@
           <div class="help-body">
             <table>
               <tr><th>Режим</th><th>Цена</th><th>Особенность</th></tr>
-              <tr><td>🎲 Обычная</td><td>500 ₽</td><td>все редкости</td></tr>
-              <tr><td>🔥 Супер</td><td>3 000 ₽</td><td>без обычных</td></tr>
+              <tr><td>🎲 Обычная</td><td>300 ₽</td><td>все редкости</td></tr>
+              <tr><td>🔥 Супер</td><td>2 000 ₽</td><td>без обычных</td></tr>
               <tr><td>👑 Элита</td><td>≈7 700 ₽</td><td>с 20 ур., цена ×2</td></tr>
             </table>
             <ul>
@@ -4342,7 +4342,7 @@
     // Супер Элита: 1 000 000 сум за мем (в базовых рублях: 1 000 000 / 130), машина ×2
     const ELITE_PLATE_COST_BASE = 1000000 / CURRENCIES.uz.rate;
     const SPIN_COSTS = {
-      plate: { normal: 500,  super: 3000, elite: ELITE_PLATE_COST_BASE },
+      plate: { normal: 300,  super: 2000, elite: ELITE_PLATE_COST_BASE },
       car:   { normal: 1000, super: 6000, elite: ELITE_PLATE_COST_BASE * 2 }
     };
     const ELITE_UNLOCK_LEVEL = 20;
@@ -4756,7 +4756,8 @@
     }
 
     function getSpinXp(kind = rollKind, mode = spinMode) {
-      return Math.round(SPIN_COSTS[kind][mode] * XP_PER_RUB);
+      const xpBase = kind === 'plate' && mode === 'normal' ? 500 : kind === 'plate' && mode === 'super' ? 3000 : SPIN_COSTS[kind][mode];
+      return Math.round(xpBase * XP_PER_RUB);
     }
 
     function grantXp(amount) {

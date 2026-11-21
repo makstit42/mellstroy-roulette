@@ -2745,7 +2745,7 @@
       overflow: hidden;
     }
 
-    .legend-fx.show { display: flex; animation: legendFade 3.2s ease forwards; }
+    .legend-fx.show { display: flex; animation: legendFade 1.6s ease forwards; }
 
     .legend-dim {
       position: absolute;
@@ -2759,7 +2759,7 @@
       position: absolute;
       inset: 0;
       background: radial-gradient(circle at center, rgba(253, 224, 71, 0.55) 0%, rgba(245, 158, 11, 0.18) 30%, transparent 60%);
-      animation: legendFlash 3.2s ease forwards;
+      animation: legendFlash 1.6s ease forwards;
     }
 
     .legend-emojis { position: absolute; inset: 0; overflow: hidden; }
@@ -2790,7 +2790,7 @@
       background: repeating-conic-gradient(from 0deg, rgba(253, 224, 71, 0.28) 0deg 8deg, transparent 8deg 22deg);
       -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 45%);
       mask-image: radial-gradient(circle, #000 0%, transparent 45%);
-      animation: legendRays 3.2s linear forwards;
+      animation: legendRays 1.6s linear forwards;
     }
 
     .legend-card {
@@ -2801,7 +2801,7 @@
       background: rgba(15, 23, 42, 0.82);
       border: 3px solid #fde047;
       box-shadow: 0 0 60px rgba(253, 224, 71, 0.7), inset 0 0 30px rgba(245, 158, 11, 0.25);
-      animation: legendCard 3.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      animation: legendCard 1.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
       max-width: calc(100vw - 30px);
     }
 
@@ -3506,6 +3506,8 @@
     .mp-item span { width: 22px; flex-shrink: 0; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.78rem; }
     .mp-item.cur { border-color: #a855f7; background: rgba(168, 85, 247, 0.14); }
     @media (prefers-reduced-motion: reduce) { .mp-disc.spin { animation: none; } }
+
+    .legend-fx.show { pointer-events: auto; cursor: pointer; }
 
     /* Поддержать автора */
     .sup-card { width: 100%; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; text-align: left; padding: 12px 14px; margin-bottom: 8px;
@@ -6857,8 +6859,8 @@
         const style = [
           `left:${Math.random() * 96}%`,
           `font-size:${size}rem`,
-          `--dur:${2.2 + Math.random() * 1.4}s`,
-          `--delay:${Math.random() * 0.9}s`,
+          `--dur:${1.1 + Math.random() * 0.6}s`,
+          `--delay:${Math.random() * 0.35}s`,
           `--drift:${(Math.random() - 0.5) * 140}px`,
           `--rot0:${(Math.random() - 0.5) * 40}deg`,
           `--rot1:${(Math.random() - 0.5) * 120}deg`
@@ -6885,9 +6887,9 @@
       // Конфетти дождём по всей ширине экрана + взрывы монет
       const colors = ['#f59e0b', '#fde047', '#ffffff', '#fb923c', '#facc15'];
       for (let i = 0; i < 8; i++) {
-        setTimeout(() => spawnParticles((window.innerWidth / 8) * (i + 0.5), -10, colors, 26, 7), i * 70);
+        setTimeout(() => spawnParticles((window.innerWidth / 8) * (i + 0.5), -10, colors, 26, 7), i * 35);
       }
-      [300, 700, 1100].forEach((ms, i) => setTimeout(() => {
+      [150, 350, 550].forEach((ms, i) => setTimeout(() => {
         spawnParticles(window.innerWidth * (0.25 + i * 0.25), window.innerHeight * 0.4, colors, 60, 12);
       }, ms));
 
@@ -6900,7 +6902,7 @@
         fx.classList.remove('show');
         document.body.classList.remove('legend-shake');
         document.getElementById('legendEmojis').innerHTML = '';
-      }, 3200);
+      }, 1600);
     }
 
 
@@ -7115,7 +7117,7 @@
             autoSpinCount++;
             renderAutoBtn();
             clearTimeout(autoTimer);
-            const pause = finalRarity.id === 'legendary' ? 1800 : (state.settings.skipAnim ? 280 : 750);
+            const pause = finalRarity.id === 'legendary' ? 900 : (state.settings.skipAnim ? 280 : 750);
             autoTimer = setTimeout(autoSpinStep, pause);
           }
         }
@@ -10816,6 +10818,15 @@
     setInterval(() => { if (document.getElementById('settingsModal').classList.contains('open')) mpTick(); }, 500);
     document.getElementById('settingsBtn').addEventListener('click', () => setTimeout(renderPlayer, 30));
     document.getElementById('setMusicToggle').addEventListener('change', () => setTimeout(renderPlayer, 30));
+
+
+    // Эффект легендарки можно закрыть тапом
+    document.getElementById('legendFx').addEventListener('click', () => {
+      const fx = document.getElementById('legendFx');
+      fx.classList.remove('show');
+      document.body.classList.remove('legend-shake');
+      document.getElementById('legendEmojis').innerHTML = '';
+    });
 
 
     // Разовое повышение цены уже лежащих мемов и мемчиков — так же, как подняли базовые цены

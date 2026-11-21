@@ -9775,6 +9775,32 @@
 
 
     // ===================== «МЕМ НА МЕМ» =====================
+    const MDUEL_SOUNDS = [
+      'media/audio/mduel_01.m4a'
+    ];
+    const MD_SND = { urls: [] };
+    function mdSoundUrl(i) {
+      const v = MDUEL_SOUNDS[i];
+      if (v.startsWith('media/')) return v;
+      if (!MD_SND.urls[i]) {
+        const bin = atob(v);
+        const u8 = new Uint8Array(bin.length);
+        for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+        MD_SND.urls[i] = URL.createObjectURL(new Blob([u8], { type: 'audio/mp4' }));
+      }
+      return MD_SND.urls[i];
+    }
+    // Звук «вызов принят» — у обоих игроков
+    function mdAcceptSound() {
+      if (!soundEnabled || !MDUEL_SOUNDS.length) return;
+      sfxLoad(mdSoundUrl(Math.floor(Math.random() * MDUEL_SOUNDS.length))).then(buf => {
+        musicDuck('mdaccept', true);
+        const src = sfxPlay(buf);
+        src.onended = () => musicDuck('mdaccept', false);
+      }).catch(() => { playTone(880, 0.12, 'triangle', 0.12); });
+    }
+    if (MDUEL_SOUNDS.length) setTimeout(() => { try { sfxLoad(mdSoundUrl(0)).catch(() => {}); } catch (e) {} }, 4000);
+
     const MD = { id: 0, data: null, selected: null, busy: false, loopT: null, watchId: 0, watchT: null, played: {}, animating: false, off: 0, timerT: null };
     const mdOn = () => socOn() && SOC.v4;
     const mdMine = (d) => d.side === 0 ? d.a : d.b;
@@ -9846,6 +9872,7 @@
         const res = await socApi('/mduel/join', { id });
         if (!res.ok) throw new Error(res.error || 'Ошибка');
         haptic('success');
+        mdAcceptSound();
         mdShow(res.duel);
       } catch (e) { showToast('⚠️ ' + e.message); loadDuels(false); }
     };
@@ -9883,7 +9910,7 @@
             if (res.ok) {
               const d = res.duel;
               if (d.status === 'picking' || (d.status === 'done' && !MD.played[id])) {
-                playTone(880, 0.12, 'triangle', 0.12); setTimeout(() => playTone(1175, 0.16, 'triangle', 0.12), 140);
+                if (d.status === 'picking') mdAcceptSound();
                 haptic('warning');
                 mdShow(d);
               }

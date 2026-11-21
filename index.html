@@ -3436,6 +3436,26 @@
     .banana-note { font-size: 0.78rem; color: var(--muted); font-weight: 800; }
     .meme-viewer.banana-pop { animation: bananaPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
     @keyframes bananaPop { 0% { transform: scale(1); } 40% { transform: scale(1.06) rotate(-1.5deg); } 100% { transform: scale(1); } }
+
+    /* Любимый мем */
+    #favModal { z-index: 1000; }
+    .fav-box { text-align: center; display: flex; flex-direction: column; gap: 10px; }
+    .fav-heart { font-size: 2.6rem; }
+    .fav-box h2 { font-size: 1.2rem; font-weight: 900; }
+    .fav-box p { color: var(--muted); font-weight: 700; line-height: 1.45; font-size: 0.9rem; }
+    .fav-list { list-style: none; padding: 0; margin: 0; text-align: left; display: flex; flex-direction: column; gap: 6px; font-size: 0.86rem; font-weight: 700;
+      background: var(--card-dark); border: 1px solid rgba(244, 63, 94, 0.4); border-radius: 16px; padding: 12px; }
+    .fav-yes, .fav-btn { width: 100%; min-height: 50px; border: none; border-radius: 18px; font-weight: 900; font-size: 1rem; color: #fff;
+      background: linear-gradient(135deg, #f43f5e, #be123c); box-shadow: 0 8px 22px rgba(244, 63, 94, 0.35); }
+    .fav-no { min-height: 44px; width: 100%; }
+    .fav-badge { flex: 1; text-align: center; font-weight: 900; font-size: 0.8rem; color: #fb7185; background: rgba(244, 63, 94, 0.12);
+      border: 1px solid rgba(244, 63, 94, 0.45); border-radius: 14px; padding: 8px 6px; cursor: pointer; }
+    .fav-badge.big { font-size: 0.88rem; padding: 12px; cursor: default; width: 100%; }
+    .mini-card.fav-card { box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.7), 0 0 22px rgba(244, 63, 94, 0.3); }
+    .prof-fav { display: flex; align-items: center; gap: 12px; background: var(--card-dark); border: 2px solid var(--rc); border-radius: 18px; padding: 10px; }
+    .prof-fav .meme-poster { width: 96px; height: 72px; object-fit: contain; flex-shrink: 0; }
+    .prof-fav b { display: block; font-weight: 900; }
+    .prof-fav span { font-weight: 800; font-size: 0.8rem; }
   </style>
 </head>
 <body>
@@ -3533,7 +3553,7 @@
 
     <!-- ===== Страница: Гараж (мемы + машины) ===== -->
     <section class="page" id="page-garage">
-      <div class="page-head"><h2 class="page-title">Дом мамы птицы</h2></div>
+      <div class="page-head"><h2 class="page-title">Хаммам</h2></div>
       <div class="seg" id="garageSeg">
         <button data-view="plates" class="active">😂 Мемы <span class="seg-sub"><span id="garageCount">0</span>/<span id="garageCap">15</span></span></button>
         <button data-view="cars">🎬 Мемчики <span class="seg-sub"><span id="carCount">0</span>/<span id="carCap">10</span></span></button>
@@ -3761,7 +3781,7 @@
     <div class="nav-inner">
       <span class="nav-indicator no-anim" id="navIndicator" aria-hidden="true"><i></i></span>
       <button class="nav-btn active" data-page="spin"><span class="nav-ico">🎰</span>Крутка</button>
-      <button class="nav-btn" data-page="garage"><span class="nav-ico">🏠</span><span class="nav-lbl-2">Дом мамы птицы</span><span class="nav-badge" id="garageBadge">!</span></button>
+      <button class="nav-btn" data-page="garage"><span class="nav-ico">🧖</span><span class="nav-lbl-2">Хаммам</span><span class="nav-badge" id="garageBadge">!</span></button>
       <button class="nav-btn" data-page="risk"><span class="nav-ico">⚡</span>Риск</button>
       <button class="nav-btn" data-page="shop"><span class="nav-ico">🛒</span>Магазин</button>
     </div>
@@ -3857,7 +3877,7 @@
               <button class="dev-btn-sec" id="devClearDebt">Без долга</button>
               <button class="dev-btn-sec" id="devGiveXp">+500 XP</button>
             </div>
-            <label class="toggle-row"><span>♾️ Без ограничений<small>Бесплатно всё, бесконечный дом мамы птицы</small></span><input type="checkbox" id="devNoLimitsToggle" /></label>
+            <label class="toggle-row"><span>♾️ Без ограничений<small>Бесплатно всё, бесконечный хаммам</small></span><input type="checkbox" id="devNoLimitsToggle" /></label>
             <label class="toggle-row"><span>🎯 100% апгрейд</span><input type="checkbox" id="devAlwaysWinToggle" /></label>
             <label class="toggle-row"><span>👑 Только легендарки</span><input type="checkbox" id="devForceLegendToggle" /></label>
             <label class="toggle-row"><span>🎡 Колесо без таймера</span><input type="checkbox" id="devInfiniteWheelToggle" /></label>
@@ -3913,6 +3933,22 @@
     <div class="modal-box md-box">
       <div class="modal-header"><h2 id="mdTitle">🎭 Мем на мем</h2><button class="close-modal-btn" id="mdCloseBtn" onclick="mdClose()">✕</button></div>
       <div id="mdBody"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="favModal">
+    <div class="modal-box fav-box">
+      <div class="fav-heart">❤️</div>
+      <h2>Сделать мем любимым?</h2>
+      <p id="favText"></p>
+      <ul class="fav-list">
+        <li>🚫 Его нельзя будет <b>продать</b></li>
+        <li>🚫 Нельзя <b>улучшить</b> в апгрейдере и отдать в <b>контракт</b></li>
+        <li>🚫 Нельзя поставить в дуэль <b>«Мем на мем»</b></li>
+        <li>🔒 Отменить это <b>нельзя</b>, любимый мем бывает только один</li>
+      </ul>
+      <button class="fav-yes" onclick="confirmFav()">❤️ Да, сделать любимым</button>
+      <button class="bank-action btn-outline fav-no" onclick="closeModalById('favModal')">Отмена</button>
     </div>
   </div>
 
@@ -4066,7 +4102,7 @@
         </details>
 
         <details class="help-item">
-          <summary>🏠 Дом мамы птицы</summary>
+          <summary>🏠 Хаммам</summary>
           <div class="help-body">
             <ul>
               <li>Нажми на мем или мемчик — откроется видео со звуком. Во вкладке «🎬 Мемчики» видно, каких ещё не хватает.</li>
@@ -6711,7 +6747,7 @@
       if (listOf(activeKind).length >= getMaxCapacity(activeKind)) {
         showToast(activeKind === 'car'
           ? 'Мемчиков слишком много! Продайте лишние или скрестите их в контракте.'
-          : 'Дом мамы птицы переполнен! Продайте мемы или скрестите в контракте.');
+          : 'Хаммам переполнен! Продайте мемы или скрестите в контракте.');
         haptic('warning');
         return false;
       }
@@ -7128,7 +7164,7 @@
       const { min } = getContractLimits();
       const list = listOf(contractKind);
       if (list.length < min) {
-        showToast(`Для контракта нужно минимум ${min} шт. ${contractKind === 'car' ? 'среди мемчиков' : 'в доме мамы птицы'}.`);
+        showToast(`Для контракта нужно минимум ${min} шт. ${contractKind === 'car' ? 'среди мемчиков' : 'в хаммаме'}.`);
         return;
       }
       const sorted = [...list].sort((a, b) => a.sellPrice - b.sellPrice);
@@ -7213,6 +7249,7 @@
       if (isBusy()) return;
       const found = findItem(id);
       if (!found) return;
+      if (found.item.fav) { showToast('❤️ Любимый мем нельзя продать'); return; }
       const sold = found.item;
 
       const card = btnEl ? btnEl.closest('.mini-card') : null;
@@ -7251,10 +7288,11 @@
     }
 
     function sellAllPlates() {
-      if (isBusy() || state.garage.length === 0) return;
-      const total = state.garage.reduce((sum, p) => sum + p.sellPrice, 0);
-      const count = state.garage.length;
-      state.garage = [];
+      const sellable = state.garage.filter(p => !p.fav);
+      if (isBusy() || sellable.length === 0) return;
+      const total = sellable.reduce((sum, p) => sum + p.sellPrice, 0);
+      const count = sellable.length;
+      state.garage = state.garage.filter(p => p.fav);
       selectedUpgradeId = null;
       selectedContractIds = [];
       changeBalance(total);
@@ -7339,7 +7377,7 @@
       const pIdx = state.garage.findIndex(p => String(p.id) === String(plateId));
       if (!car || pIdx === -1) return;
 
-      // Если мем уже стоит — снимаем его (место в доме мамы птицы освобождает новый мем)
+      // Если мем уже стоит — снимаем его (место в хаммаме освобождает новый мем)
       const plate = state.garage.splice(pIdx, 1)[0];
       if (car.plate) {
         car.sellPrice -= car.plateBonus || 0;
@@ -7370,13 +7408,13 @@
       const car = state.cars.find(c => String(c.id) === String(tuneCarId));
       if (!car || !car.plate) return;
       if (state.garage.length >= getMaxGarageCapacity()) {
-        showToast('В доме мамы птицы нет места для мема!');
+        showToast('В хаммаме нет места для мема!');
         return;
       }
       car.sellPrice = Math.max(10, car.sellPrice - (car.plateBonus || 0));
       state.garage.unshift(car.plate);
       lastAddedId = car.plate.id;
-      showToast(`Мем ${formatPlateShort(car.plate)} вышел из машины и вернулся в дом мамы птицы`);
+      showToast(`Мем ${formatPlateShort(car.plate)} вышел из машины и вернулся в хаммам`);
       car.plate = null;
       car.plateBonus = 0;
       car.plateLossPct = 0;
@@ -7403,7 +7441,7 @@
               К цене машины: <b style="color:${car.plateBonus >= 0 ? 'var(--green)' : 'var(--red)'}">${sign}${fmtMoney(Math.abs(car.plateBonus))}</b>
             </div>
           </div>
-          <div class="tune-plate-note">Можно выбрать другой мем ниже — старый вернётся в дом мамы птицы.</div>
+          <div class="tune-plate-note">Можно выбрать другой мем ниже — старый вернётся в хаммам.</div>
           ${buildPlatePickerHTML(car)}
         `;
       } else {
@@ -7417,7 +7455,7 @@
 
     function buildPlatePickerHTML(car) {
       if (state.garage.length === 0) {
-        return '<div class="empty-msg" style="padding:8px 0">В доме мамы птицы нет мемов — выбейте их в рулетке.</div>';
+        return '<div class="empty-msg" style="padding:8px 0">В хаммаме нет мемов — выбейте их в рулетке.</div>';
       }
       const base = car.plate ? car.sellPrice - (car.plateBonus || 0) : car.sellPrice;
       const sorted = [...state.garage].sort((a, b) => b.sellPrice - a.sellPrice);
@@ -8941,7 +8979,7 @@
         return;
       }
       if (state.garage.length >= getMaxGarageCapacity()) {
-        showToast('Дом мамы птицы переполнен! Освободите место для приза.');
+        showToast('Хаммам переполнен! Освободите место для приза.');
         return;
       }
 
@@ -9065,15 +9103,15 @@
         {
           key: 'banana',
           title: `🍌 Банан (у тебя: ${state.bananas || 0})`,
-          desc: `Даёт мему +1 редкость, сам мем не меняется. В доме мамы птицы нажми на мем → «Дать банан». Легендаркам бананы не нужны.`,
-          cost: free ? 0 : 5000,
+          desc: `Даёт мему +1 редкость, сам мем не меняется. В хаммаме нажми на мем → «Дать банан». Легендаркам бананы не нужны.`,
+          cost: free ? 0 : 1000,
           maxed: false
         },
         {
           key: 'capacity',
-          title: `🏗️ Расширение дома мамы птицы (Ур. ${u.capacity}${free ? '/∞' : '/10'})`,
+          title: `🏗️ Расширение хаммама (Ур. ${u.capacity}${free ? '/∞' : '/10'})`,
           desc: free
-            ? `Лимит дома мамы птицы отключён режимом разработчика (∞ мест).`
+            ? `Лимит хаммама отключён режимом разработчика (∞ мест).`
             : `+10 мест для мемов (сейчас ${getMaxGarageCapacity()}).`,
           cost: free ? 0 : Math.round(400 * Math.pow(1.6, u.capacity)),
           maxed: !free && u.capacity >= 10
@@ -9193,6 +9231,7 @@
         level: getLevelInfo().level,
         clips: clipOwnedCount(),
         clipIds: Object.keys(clipGroups()),
+        fav: favPayload(),
         legend: state.legendCount || 0,
         spins: state.spins || 0
       };
@@ -9355,7 +9394,7 @@
     async function spinFortuneServer() {
       if (isBusy()) return;
       if (!socOn() || hasInfiniteWheel()) { spinFortune(); return; }
-      if (state.garage.length >= getMaxGarageCapacity()) { showToast('Дом мамы птицы переполнен! Освободите место для приза.'); return; }
+      if (state.garage.length >= getMaxGarageCapacity()) { showToast('Хаммам переполнен! Освободите место для приза.'); return; }
       const btn = document.getElementById('fortuneSpinBtn');
       btn.disabled = true;
       try {
@@ -9523,6 +9562,7 @@
             <div><b>${p.legend} 👑</b><span>легендарки</span></div>
             <div><b>${p.duels.wins}/${p.duels.played}</b><span>дуэли (победы)</span></div>
           </div>
+          ${p.fav && p.fav.memeId ? favProfileHTML(p.fav) : ''}
           <div class="duel-sub">🎬 Коллекция мемчиков</div>
           <div class="prof-clips">${clips.map(m => {
             const r = memeRarity(m.rarity);
@@ -9841,7 +9881,7 @@
       };
     }
     function mdCheat() { return typeof lbCheating === 'function' && lbCheating(); }
-    function mdMemeList() { return state.garage.filter(p => itemKind(p) === 'plate' && !(isUpgrading && String(p.id) === String(upgradingPlateId))); }
+    function mdMemeList() { return state.garage.filter(p => itemKind(p) === 'plate' && !p.fav && !(isUpgrading && String(p.id) === String(upgradingPlateId))); }
 
     // Забрать мемы с сервера (выигрыш / возврат)
     async function mdClaimItems(toast = true) {
@@ -10233,7 +10273,7 @@
     if (typeof state.bananas !== 'number' || !(state.bananas >= 0)) state.bananas = 0;
 
     function buyBanana(btnEl) {
-      const cost = hasNoLimits() ? 0 : 5000;
+      const cost = hasNoLimits() ? 0 : 1000;
       if (state.balance < cost) { showToast(`Нужно ${fmtMoney(cost)} на банан`); haptic('warning'); return; }
       if (cost > 0) changeBalance(-cost);
       state.bananas = (state.bananas || 0) + 1;
@@ -10252,7 +10292,7 @@
       if (!p || itemKind(p) !== 'plate') { row.innerHTML = ''; return; }
       const rid = (p.rarity && p.rarity.id) || 'common';
       const n = state.bananas || 0;
-      if (rid === 'legendary') { row.innerHTML = '<div class="banana-note">👑 Легендарке бананы не нужны</div>'; return; }
+      if (rid === 'legendary') { renderFavRow(row, p); return; }
       const next = BASE_RARITIES[rarityIdx(rid) + 1];
       const busyNow = isBusy() && String(upgradingPlateId) === String(p.id);
       row.innerHTML = n > 0
@@ -10272,8 +10312,8 @@
       state.bananas -= 1;
       p.bananas = (p.bananas || 0) + 1;
       p.rarity = to;
-      // цена растёт на половину разницы между редкостями (чтобы банан не был бесконечными деньгами)
-      p.sellPrice = Math.round(p.sellPrice + (to.basePrice - from.basePrice) * getPriceMultiplier() * 0.5);
+      // цена растёт на половину разницы между редкостями, но не больше 900 ₽ — дешевле банана, чтобы он не был бесконечными деньгами
+      p.sellPrice = Math.round(p.sellPrice + Math.min((to.basePrice - from.basePrice) * getPriceMultiplier() * 0.5, 900));
       saveState();
       updateAllUI();
       const r = to;
@@ -10289,6 +10329,53 @@
       showToast(`🍌 Мем стал: ${r.name}!`);
       renderBananaRow();
     };
+
+
+    // ===================== ❤️ ЛЮБИМЫЙ МЕМ =====================
+    function favItem() { return state.garage.find(x => x.fav); }
+    function favPayload() {
+      const p = favItem();
+      if (!p) return null;
+      return { memeId: getPlateMeme(p).id, rid: (p.rarity && p.rarity.id) || 'legendary', price: Math.round(p.sellPrice), bananas: p.bananas || 0 };
+    }
+    function favProfileHTML(f) {
+      const m = memeById(f.memeId);
+      const r = memeRarity(f.rid);
+      return `<div class="duel-sub">❤️ Любимый мем</div>
+        <div class="prof-fav" style="--rc:${r.color}">${memePosterImg(m.id)}<div><b>${lbEscape(m.name)}</b><span style="color:${r.color}">${r.name}${f.bananas ? ' · 🍌×' + f.bananas : ''}</span></div></div>`;
+    }
+    function renderFavRow(row, p) {
+      const cur = favItem();
+      if (p.fav) row.innerHTML = '<div class="fav-badge big">❤️ Это твой любимый мем — его видят все в твоём профиле</div>';
+      else if (cur) row.innerHTML = '<div class="banana-note">👑 Легендарка · любимый мем у тебя уже выбран</div>';
+      else row.innerHTML = '<button class="fav-btn" onclick="askFav()">❤️ Сделать мем любимым</button><div class="banana-note">Легендарке бананы не нужны</div>';
+    }
+    window.askFav = function() {
+      const p = state.garage.find(x => String(x.id) === MEME_MODAL.itemId);
+      if (!p) return;
+      document.getElementById('favText').innerHTML = `«${lbEscape(getPlateMeme(p).name)}» станет твоим любимым мемом и будет показываться в твоём профиле.`;
+      document.getElementById('favModal').classList.add('open');
+      haptic('warning');
+    };
+    window.confirmFav = function() {
+      const p = state.garage.find(x => String(x.id) === MEME_MODAL.itemId);
+      closeModalById('favModal');
+      if (!p || favItem() || !p.rarity || p.rarity.id !== 'legendary') return;
+      if (isUpgrading && String(upgradingPlateId) === String(p.id)) { showToast('Этот мем сейчас в апгрейдере'); return; }
+      getPlateMeme(p);
+      p.fav = true;
+      if (String(selectedUpgradeId) === String(p.id)) selectedUpgradeId = null;
+      selectedContractIds = selectedContractIds.filter(cid => cid !== String(p.id));
+      saveState();
+      updateAllUI();
+      renderBananaRow();
+      spawnParticlesFromEl(document.getElementById('memeViewer'), ['#f43f5e', '#fb7185', '#fde047', '#fff'], 60, 9);
+      playWinSound('legendary');
+      haptic('success');
+      showToast('❤️ Теперь это твой любимый мем!');
+      if (typeof lbSubmit === 'function') { LB.lastSent = 0; setTimeout(() => lbSubmit(true), 500); }
+    };
+    document.getElementById('favModal').addEventListener('click', e => { if (e.target.id === 'favModal') closeModalById('favModal'); });
 
     function openRisk(which = riskTab) {
       switchTab(which === 'contracts' ? 'contracts' : 'upgrader');
@@ -10520,24 +10607,25 @@
 
       // === ГАРАЖ: МЕМА ===
       const sellAllBtn = document.getElementById('sellAllBtn');
-      const totalGarageVal = state.garage.reduce((s, p) => s + p.sellPrice, 0);
-      sellAllBtn.textContent = state.garage.length ? `Продать всё · ${fmtMoney(totalGarageVal)}` : 'Продать всё';
-      sellAllBtn.disabled = busy || state.garage.length === 0;
+      const sellableG = state.garage.filter(p => !p.fav);
+      const totalGarageVal = sellableG.reduce((s, p) => s + p.sellPrice, 0);
+      sellAllBtn.textContent = sellableG.length ? `Продать всё · ${fmtMoney(totalGarageVal)}` : 'Продать всё';
+      sellAllBtn.disabled = busy || sellableG.length === 0;
 
       if (currentPage === 'garage' && garageView === 'plates') {
         document.getElementById('garageList').innerHTML = state.garage.length === 0
-          ? emptyHTML('😂', 'Дом мамы птицы пуст. Крути рулетку — мемы появятся здесь.')
-          : sortItems(state.garage, state.settings.sortGarage).map(p => `
-            <div class="mini-card ${p.id === lastAddedId ? 'card-new' : ''}" style="--rc:${p.rarity.color}">
+          ? emptyHTML('😂', 'Хаммам пуст. Крути рулетку — мемы появятся здесь.')
+          : [...state.garage.filter(p => p.fav), ...sortItems(state.garage.filter(p => !p.fav), state.settings.sortGarage)].map(p => `
+            <div class="mini-card ${p.id === lastAddedId ? 'card-new' : ''}${p.fav ? ' fav-card' : ''}" style="--rc:${p.rarity.color}">
               <div class="media meme-open" onclick="openMemeModal('${p.id}')" title="Смотреть">${buildRealPlateHTML(p, 'plate-card')}</div>
               <div class="mini-meta-row">
                 <span style="color:${p.rarity.color}">${p.rarity.name}</span>
                 <span class="mini-tag">${getPlateMeme(p).name}</span>
               </div>
-              <div class="mini-actions">
+              ${p.fav ? `<div class="mini-actions"><div class="fav-badge" onclick="openMemeModal('${p.id}')">❤️ Любимый мем</div></div>` : `<div class="mini-actions">
                 <button class="sell-one-btn" title="Продать" onclick="sellItem('${p.id}', this)" ${dis}>💰 ${fmtMoney(p.sellPrice)}</button>
                 <button class="icon-sq quick-upg-btn" title="В апгрейд" onclick="openUpgraderWithPlate('${p.id}')" ${dis}>⚡</button>
-              </div>
+              </div>`}
             </div>`).join('');
       }
 
@@ -10562,7 +10650,7 @@
       renderFortuneUI();
 
       // === АПГРЕЙДЕР ===
-      const upgList = sortItems(listOf(upgKind), state.settings.sortUpg);
+      const upgList = sortItems(listOf(upgKind).filter(x => !x.fav), state.settings.sortUpg);
       document.querySelectorAll('#upgKindSwitch button').forEach(b => {
         b.classList.toggle('active', b.dataset.kind === upgKind);
         b.disabled = busy;
@@ -10628,7 +10716,7 @@
 
       // === КОНТРАКТЫ ===
       const cLim = getContractLimits();
-      const cList = listOf(contractKind);
+      const cList = listOf(contractKind).filter(x => !x.fav);
       const cWhat = contractKind === 'car' ? 'мемчиков' : 'мемов';
       document.getElementById('contractHint').textContent = `Объедини от ${cLim.min} до ${cLim.max} ${cWhat} в один предмет ценой ×0.5–×3.0 от суммы.`;
       document.querySelectorAll('#contractKindSwitch button').forEach(b => {
@@ -11275,7 +11363,7 @@
       {
         sel: '#bottomNav',
         title: '🧭 Разделы',
-        text: '<b>Дом мамы птицы</b> — мемы и коллекция мемчиков. <b>Риск</b> — апгрейд и контракты. <b>Магазин</b> — улучшения и банк.'
+        text: '<b>Хаммам</b> — мемы и коллекция мемчиков. <b>Риск</b> — апгрейд и контракты. <b>Магазин</b> — улучшения и банк.'
       },
       {
         sel: '#wheelOpenBtn',

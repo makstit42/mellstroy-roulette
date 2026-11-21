@@ -3474,6 +3474,12 @@
     @keyframes hmPulse { 50% { transform: scale(1.06); } }
     #garageBadge.hm-alert { display: block; }
     @media (prefers-reduced-motion: reduce) { .hm-card .hm-btn { animation: none !important; } }
+
+    /* Блокировка мема */
+    .lock-btn { font-size: 0.95rem; }
+    .lock-btn.on { border-color: rgba(250, 204, 21, 0.7); background: rgba(250, 204, 21, 0.14); }
+    .sell-one-btn.is-locked { opacity: 0.55; }
+    .mini-card.locked-card { box-shadow: 0 0 0 1.5px rgba(250, 204, 21, 0.55); }
   </style>
 </head>
 <body>
@@ -7272,6 +7278,7 @@
       const found = findItem(id);
       if (!found) return;
       if (found.item.fav) { showToast('❤️ Любимый мем нельзя продать'); return; }
+      if (found.item.locked) { showToast('🔒 Мем заблокирован — сначала разблокируй его'); haptic('warning'); return; }
       const sold = found.item;
 
       const card = btnEl ? btnEl.closest('.mini-card') : null;
@@ -7310,11 +7317,11 @@
     }
 
     function sellAllPlates() {
-      const sellable = state.garage.filter(p => !p.fav);
+      const sellable = state.garage.filter(p => !p.fav && !p.locked);
       if (isBusy() || sellable.length === 0) return;
       const total = sellable.reduce((sum, p) => sum + p.sellPrice, 0);
       const count = sellable.length;
-      state.garage = state.garage.filter(p => p.fav);
+      state.garage = state.garage.filter(p => p.fav || p.locked);
       selectedUpgradeId = null;
       selectedContractIds = [];
       changeBalance(total);
@@ -10510,6 +10517,19 @@
     }, 1000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { hmApplyFreeze(); renderHammam(); } });
 
+
+    // ===================== 🔒 БЛОКИРОВКА МЕМА =====================
+    window.toggleLock = function(id) {
+      const p = state.garage.find(x => String(x.id) === String(id));
+      if (!p || p.fav) return;
+      p.locked = !p.locked;
+      playTone(p.locked ? 520 : 700, 0.07, 'triangle', 0.08);
+      haptic('light');
+      showToast(p.locked ? '🔒 Мем заблокирован — его нельзя продать, и «Продать всё» его не тронет' : '🔓 Мем разблокирован');
+      saveState();
+      updateAllUI();
+    };
+
     function openRisk(which = riskTab) {
       switchTab(which === 'contracts' ? 'contracts' : 'upgrader');
     }
@@ -10740,7 +10760,7 @@
 
       // === ГАРАЖ: МЕМА ===
       const sellAllBtn = document.getElementById('sellAllBtn');
-      const sellableG = state.garage.filter(p => !p.fav);
+      const sellableG = state.garage.filter(p => !p.fav && !p.locked);
       const totalGarageVal = sellableG.reduce((s, p) => s + p.sellPrice, 0);
       sellAllBtn.textContent = sellableG.length ? `Продать всё · ${fmtMoney(totalGarageVal)}` : 'Продать всё';
       sellAllBtn.disabled = busy || sellableG.length === 0;
@@ -10749,14 +10769,15 @@
         document.getElementById('garageList').innerHTML = state.garage.length === 0
           ? emptyHTML('😂', 'Хаммам пуст. Крути рулетку — мемы появятся здесь.')
           : [...state.garage.filter(p => p.fav), ...sortItems(state.garage.filter(p => !p.fav), state.settings.sortGarage)].map(p => `
-            <div class="mini-card ${p.id === lastAddedId ? 'card-new' : ''}${p.fav ? ' fav-card' : ''}" style="--rc:${p.rarity.color}">
+            <div class="mini-card ${p.id === lastAddedId ? 'card-new' : ''}${p.fav ? ' fav-card' : ''}${p.locked ? ' locked-card' : ''}" style="--rc:${p.rarity.color}">
               <div class="media meme-open" onclick="openMemeModal('${p.id}')" title="Смотреть">${buildRealPlateHTML(p, 'plate-card')}</div>
               <div class="mini-meta-row">
                 <span style="color:${p.rarity.color}">${p.rarity.name}</span>
                 <span class="mini-tag">${getPlateMeme(p).name}</span>
               </div>
               ${p.fav ? `<div class="mini-actions"><div class="fav-badge" onclick="openMemeModal('${p.id}')">❤️ Любимый мем</div></div>` : `<div class="mini-actions">
-                <button class="sell-one-btn" title="Продать" onclick="sellItem('${p.id}', this)" ${dis}>💰 ${fmtMoney(p.sellPrice)}</button>
+                <button class="sell-one-btn${p.locked ? ' is-locked' : ''}" title="${p.locked ? 'Заблокирован' : 'Продать'}" onclick="sellItem('${p.id}', this)" ${p.locked ? 'disabled' : dis}>${p.locked ? '🔒' : '💰'} ${fmtMoney(p.sellPrice)}</button>
+                <button class="icon-sq lock-btn${p.locked ? ' on' : ''}" title="${p.locked ? 'Разблокировать' : 'Заблокировать'}" aria-label="${p.locked ? 'Разблокировать' : 'Заблокировать'}" onclick="toggleLock('${p.id}')">${p.locked ? '🔒' : '🔓'}</button>
                 <button class="icon-sq quick-upg-btn" title="В апгрейд" onclick="openUpgraderWithPlate('${p.id}')" ${dis}>⚡</button>
               </div>`}
             </div>`).join('');

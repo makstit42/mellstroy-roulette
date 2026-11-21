@@ -3425,6 +3425,17 @@
       .balance-box { padding: 0 10px; gap: 5px; }
     }
     .bal-val { text-overflow: clip; }
+
+    /* Бананы */
+    .banana-row { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 10px; }
+    .banana-btn { width: 100%; min-height: 48px; border: none; border-radius: 18px; font-weight: 900; font-size: 0.98rem;
+      background: linear-gradient(135deg, #fde047, #f59e0b); color: #1c1917; box-shadow: 0 6px 18px rgba(250, 204, 21, 0.3); }
+    .banana-btn span { color: inherit !important; text-decoration: underline; }
+    .banana-btn.empty { background: var(--card-dark); color: var(--text, #fff); border: 1px dashed var(--border); box-shadow: none; font-size: 0.88rem; }
+    .banana-btn:disabled { opacity: 0.5; }
+    .banana-note { font-size: 0.78rem; color: var(--muted); font-weight: 800; }
+    .meme-viewer.banana-pop { animation: bananaPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    @keyframes bananaPop { 0% { transform: scale(1); } 40% { transform: scale(1.06) rotate(-1.5deg); } 100% { transform: scale(1); } }
   </style>
 </head>
 <body>
@@ -3937,6 +3948,7 @@
         <button class="meme-replay" id="memeReplayBtn" onclick="replayMemeModal()" aria-label="Повторить">↻</button>
       </div>
       <div class="meme-modal-meta" id="memeModalMeta"></div>
+      <div class="banana-row" id="bananaRow"></div>
     </div>
   </div>
 
@@ -5781,7 +5793,7 @@
     function getPlateMeme(p) {
       const rid = p && p.rarity && p.rarity.id ? p.rarity.id : 'common';
       if (p && p.memeId) {
-        const own = MEMES.find(m => m.id === p.memeId && m.rarity === rid);
+        const own = MEMES.find(m => m.id === p.memeId && (m.rarity === rid || (p.bananas > 0 && rarityIdx(m.rarity) <= rarityIdx(rid))));
         if (own) return own;
       }
       const list = MEMES.filter(m => m.rarity === rid);
@@ -6044,6 +6056,8 @@
       const canvas = document.getElementById('memeViewerCanvas');
       canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
       document.getElementById('memeModal').classList.add('open');
+      MEME_MODAL.itemId = String(p.id);
+      renderBananaRow();
       haptic('light');
       memeModalPlay();
     };
@@ -9049,6 +9063,13 @@
           maxed: !free && u.price >= PRICE_MAX_LVL
         },
         {
+          key: 'banana',
+          title: `🍌 Банан (у тебя: ${state.bananas || 0})`,
+          desc: `Даёт мему +1 редкость, сам мем не меняется. В доме мамы птицы нажми на мем → «Дать банан». Легендаркам бананы не нужны.`,
+          cost: free ? 0 : 5000,
+          maxed: false
+        },
+        {
           key: 'capacity',
           title: `🏗️ Расширение дома мамы птицы (Ур. ${u.capacity}${free ? '/∞' : '/10'})`,
           desc: free
@@ -9062,6 +9083,7 @@
 
     window.buyUpgrade = function(key, btnEl) {
       if (isBusy()) return;
+      if (key === 'banana') { buyBanana(btnEl); return; }
       const item = getShopItems().find(i => i.key === key);
       if (!item || item.maxed) return;
       if (!hasNoLimits() && state.balance < item.cost) return;
@@ -9814,7 +9836,8 @@
     function mdMakeItem(it) {
       return {
         id: makeId(), kind: 'plate', country: state.settings.plateType || 'rus',
-        rarity: memeRarity(it.rid), sellPrice: Math.max(10, Math.round(it.price)), memeId: it.memeId, tag: it.tag || '🎭 Мем на мем'
+        rarity: memeRarity(it.rid), sellPrice: Math.max(10, Math.round(it.price)), memeId: it.memeId, tag: it.tag || '🎭 Мем на мем',
+        bananas: (MEMES.find(m => m.id === it.memeId) || {}).rarity !== it.rid ? 1 : 0   // мем с бананом сохраняет своё видео
       };
     }
     function mdCheat() { return typeof lbCheating === 'function' && lbCheating(); }
@@ -10203,6 +10226,69 @@
       window.addEventListener('resize', () => requestAnimationFrame(fit));
       setTimeout(fit, 0);
     })();
+
+
+    // ===================== 🍌 БАНАНЫ =====================
+    function rarityIdx(rid) { return Math.max(0, BASE_RARITIES.findIndex(r => r.id === rid)); }
+    if (typeof state.bananas !== 'number' || !(state.bananas >= 0)) state.bananas = 0;
+
+    function buyBanana(btnEl) {
+      const cost = hasNoLimits() ? 0 : 5000;
+      if (state.balance < cost) { showToast(`Нужно ${fmtMoney(cost)} на банан`); haptic('warning'); return; }
+      if (cost > 0) changeBalance(-cost);
+      state.bananas = (state.bananas || 0) + 1;
+      spawnParticlesFromEl(btnEl, ['#fde047', '#facc15', '#a3e635'], 26, 7);
+      playTone(880, 0.12, 'triangle', 0.1);
+      haptic('success');
+      showToast(`🍌 Банан куплен! Бананов: ${state.bananas}`);
+      saveState();
+      updateAllUI();
+    }
+
+    function renderBananaRow() {
+      const row = document.getElementById('bananaRow');
+      if (!row) return;
+      const p = state.garage.find(x => String(x.id) === MEME_MODAL.itemId);
+      if (!p || itemKind(p) !== 'plate') { row.innerHTML = ''; return; }
+      const rid = (p.rarity && p.rarity.id) || 'common';
+      const n = state.bananas || 0;
+      if (rid === 'legendary') { row.innerHTML = '<div class="banana-note">👑 Легендарке бананы не нужны</div>'; return; }
+      const next = BASE_RARITIES[rarityIdx(rid) + 1];
+      const busyNow = isBusy() && String(upgradingPlateId) === String(p.id);
+      row.innerHTML = n > 0
+        ? `<button class="banana-btn" onclick="giveBanana()" ${busyNow ? 'disabled' : ''}>🍌 Дать один банан → <span style="color:${next.color}">${next.name}</span></button><div class="banana-note">Бананов: ${n}</div>`
+        : `<button class="banana-btn empty" onclick="closeMemeModal(); switchTab('shop')">🍌 Нет бананов — купить в магазине</button>`;
+    }
+
+    window.giveBanana = function() {
+      const p = state.garage.find(x => String(x.id) === MEME_MODAL.itemId);
+      if (!p || itemKind(p) !== 'plate') return;
+      if ((state.bananas || 0) < 1) { renderBananaRow(); return; }
+      if (isUpgrading && String(upgradingPlateId) === String(p.id)) { showToast('Этот мем сейчас в апгрейдере'); return; }
+      const ri = rarityIdx((p.rarity && p.rarity.id) || 'common');
+      if (ri >= BASE_RARITIES.length - 1) return;
+      getPlateMeme(p);                       // фиксируем видео мема до смены редкости
+      const from = BASE_RARITIES[ri], to = BASE_RARITIES[ri + 1];
+      state.bananas -= 1;
+      p.bananas = (p.bananas || 0) + 1;
+      p.rarity = to;
+      // цена растёт на половину разницы между редкостями (чтобы банан не был бесконечными деньгами)
+      p.sellPrice = Math.round(p.sellPrice + (to.basePrice - from.basePrice) * getPriceMultiplier() * 0.5);
+      saveState();
+      updateAllUI();
+      const r = to;
+      document.getElementById('memeModalMeta').innerHTML =
+        `<span style="color:${r.color}">${r.name}</span><span>💰 ${fmtMoney(p.sellPrice)}</span><button class="meme-share" onclick="shareMemeItem('${p.id}')">📤 Поделиться</button>`;
+      const viewer = document.getElementById('memeViewer');
+      viewer.style.setProperty('--mc', r.color);
+      viewer.style.setProperty('--mcs', r.color + '66');
+      viewer.classList.remove('banana-pop'); void viewer.offsetWidth; viewer.classList.add('banana-pop');
+      spawnParticlesFromEl(viewer, ['#fde047', '#facc15', r.color, '#fff'], r.id === 'legendary' ? 70 : 40, 9);
+      playWinSound(r.id);
+      haptic('success');
+      showToast(`🍌 Мем стал: ${r.name}!`);
+      renderBananaRow();
+    };
 
     function openRisk(which = riskTab) {
       switchTab(which === 'contracts' ? 'contracts' : 'upgrader');

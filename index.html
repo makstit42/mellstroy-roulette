@@ -3476,7 +3476,10 @@
     @media (prefers-reduced-motion: reduce) { .hm-card .hm-btn { animation: none !important; } }
 
     /* Блокировка мема */
-    .lock-btn { font-size: 0.95rem; }
+    .lock-btn { font-size: 0.85rem; }
+    #garageList .mini-actions { gap: 4px; }
+    #garageList .mini-actions .icon-sq { width: 30px; }
+    #garageList .sell-one-btn { padding: 0 4px; font-size: 0.72rem; letter-spacing: -0.01em; }
     .lock-btn.on { border-color: rgba(250, 204, 21, 0.7); background: rgba(250, 204, 21, 0.14); }
     .sell-one-btn.is-locked { opacity: 0.55; }
     .mini-card.locked-card { box-shadow: 0 0 0 1.5px rgba(250, 204, 21, 0.55); }
@@ -10696,6 +10699,13 @@
       saveState();
     })();
 
+
+    // ---------- «живые» мемы в Хаммаме ----------
+    function liveMeme(h) {
+      return h.replace(/<img class="meme-poster ([^"]*)" data-mid="([^"]+)" alt=""[^>]*>/, (_, cls, mid) =>
+        `<img class="meme-poster live ${cls}" src="media/anim/${mid}.webp" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=MEME.posters['${mid}']||''">`);
+    }
+
     function openRisk(which = riskTab) {
       switchTab(which === 'contracts' ? 'contracts' : 'upgrader');
     }
@@ -10936,13 +10946,13 @@
           ? emptyHTML('😂', 'Хаммам пуст. Крути рулетку — мемы появятся здесь.')
           : [...state.garage.filter(p => p.fav), ...sortItems(state.garage.filter(p => !p.fav), state.settings.sortGarage)].map(p => `
             <div class="mini-card ${p.id === lastAddedId ? 'card-new' : ''}${p.fav ? ' fav-card' : ''}${p.locked ? ' locked-card' : ''}" style="--rc:${p.rarity.color}">
-              <div class="media meme-open" onclick="openMemeModal('${p.id}')" title="Смотреть">${buildRealPlateHTML(p, 'plate-card')}</div>
+              <div class="media meme-open" onclick="openMemeModal('${p.id}')" title="Смотреть">${liveMeme(buildRealPlateHTML(p, 'plate-card'))}</div>
               <div class="mini-meta-row">
                 <span style="color:${p.rarity.color}">${p.rarity.name}</span>
                 <span class="mini-tag">${getPlateMeme(p).name}</span>
               </div>
               ${p.fav ? `<div class="mini-actions"><div class="fav-badge" onclick="openMemeModal('${p.id}')">❤️ Любимый мем</div></div>` : `<div class="mini-actions">
-                <button class="sell-one-btn${p.locked ? ' is-locked' : ''}" title="${p.locked ? 'Заблокирован' : 'Продать'}" onclick="sellItem('${p.id}', this)" ${p.locked ? 'disabled' : dis}>${p.locked ? '🔒' : '💰'} ${fmtMoney(p.sellPrice)}</button>
+                <button class="sell-one-btn${p.locked ? ' is-locked' : ''}" title="${p.locked ? 'Заблокирован' : 'Продать'}" onclick="sellItem('${p.id}', this)" ${p.locked ? 'disabled' : dis}>${fmtMoney(p.sellPrice)}</button>
                 <button class="icon-sq lock-btn${p.locked ? ' on' : ''}" title="${p.locked ? 'Разблокировать' : 'Заблокировать'}" aria-label="${p.locked ? 'Разблокировать' : 'Заблокировать'}" onclick="toggleLock('${p.id}')">${p.locked ? '🔒' : '🔓'}</button>
                 <button class="icon-sq quick-upg-btn" title="В апгрейд" onclick="openUpgraderWithPlate('${p.id}')" ${p.locked ? 'disabled' : dis}>⚡</button>
               </div>`}

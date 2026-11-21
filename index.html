@@ -3456,6 +3456,24 @@
     .prof-fav .meme-poster { width: 96px; height: 72px; object-fit: contain; flex-shrink: 0; }
     .prof-fav b { display: block; font-weight: 900; }
     .prof-fav span { font-weight: 800; font-size: 0.8rem; }
+
+    /* Прогрев хаммама */
+    .hm-card { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; padding: 12px; border-radius: 20px;
+      background: var(--card); border: 1px solid var(--border); transition: border-color 0.3s, background 0.3s; }
+    .hm-card.hot { border-color: rgba(249, 115, 22, 0.6); background: linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(239, 68, 68, 0.08)), var(--card); }
+    .hm-card.cooling { border-color: rgba(250, 204, 21, 0.7); background: linear-gradient(135deg, rgba(250, 204, 21, 0.14), rgba(56, 189, 248, 0.08)), var(--card); }
+    .hm-card.frozen { border-color: rgba(56, 189, 248, 0.8); background: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(186, 230, 253, 0.08)), var(--card); }
+    .hm-card.heat-pop { animation: wheelWinPulse 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .hm-info { min-width: 0; }
+    .hm-title { font-weight: 900; font-size: 0.98rem; }
+    .hm-sub { font-size: 0.76rem; color: var(--muted); font-weight: 700; line-height: 1.35; margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .hm-btn { min-height: 46px; padding: 0 14px; border: none; border-radius: 16px; font-weight: 900; font-size: 0.86rem; color: #fff; white-space: nowrap;
+      background: linear-gradient(135deg, #f97316, #dc2626); box-shadow: 0 6px 18px rgba(249, 115, 22, 0.35); }
+    .hm-btn:disabled { background: var(--card-dark); color: var(--muted); box-shadow: none; border: 1px solid var(--border); }
+    .hm-card.cooling .hm-btn, .hm-card.frozen .hm-btn { animation: hmPulse 1.2s ease-in-out infinite; }
+    @keyframes hmPulse { 50% { transform: scale(1.06); } }
+    #garageBadge.hm-alert { display: block; }
+    @media (prefers-reduced-motion: reduce) { .hm-card .hm-btn { animation: none !important; } }
   </style>
 </head>
 <body>
@@ -3554,6 +3572,10 @@
     <!-- ===== Страница: Гараж (мемы + машины) ===== -->
     <section class="page" id="page-garage">
       <div class="page-head"><h2 class="page-title">Хаммам</h2></div>
+      <div class="hm-card" id="hmCard">
+        <div class="hm-info"><div class="hm-title" id="hmTitle">🧖 Хаммам холодный</div><div class="hm-sub" id="hmSub"></div></div>
+        <button class="hm-btn" id="hmBtn" onclick="heatHammam()">🔥 Прогреть хаммам</button>
+      </div>
       <div class="seg" id="garageSeg">
         <button data-view="plates" class="active">😂 Мемы <span class="seg-sub"><span id="garageCount">0</span>/<span id="garageCap">15</span></span></button>
         <button data-view="cars">🎬 Мемчики <span class="seg-sub"><span id="carCount">0</span>/<span id="carCap">10</span></span></button>
@@ -10376,6 +10398,104 @@
       if (typeof lbSubmit === 'function') { LB.lastSent = 0; setTimeout(() => lbSubmit(true), 500); }
     };
     document.getElementById('favModal').addEventListener('click', e => { if (e.target.id === 'favModal') closeModalById('favModal'); });
+
+
+    // ===================== 🔥 ПРОГРЕВ ХАММАМА =====================
+    const HM_HEAT_MS = 24 * 3600 * 1000;   // прогрев держится сутки
+    const HM_STEP_MS = 2 * 3600 * 1000;    // каждые 2 часа без прогрева — минус 10%
+    const HM_LOSS = 0.10;
+    function hmState() {
+      if (!state.hammam || typeof state.hammam !== 'object') state.hammam = { heatedAt: 0, applied: 0, lost: 0 };
+      return state.hammam;
+    }
+    function hmNow() { return typeof serverNow === 'function' ? serverNow() : Date.now(); }
+    // сколько «шагов заморозки» прошло с конца прогрева
+    function hmSteps(h, now) {
+      if (!h.heatedAt) return 0;
+      const over = now - (h.heatedAt + HM_HEAT_MS);
+      return over < HM_STEP_MS ? 0 : Math.floor(over / HM_STEP_MS);
+    }
+    function hmApplyFreeze() {
+      const h = hmState();
+      const steps = hmSteps(h, hmNow());
+      if (steps <= h.applied) return;
+      const add = steps - h.applied;
+      const k = Math.pow(1 - HM_LOSS, add);
+      let before = 0, after = 0;
+      for (const it of [...state.garage, ...state.cars]) {
+        before += it.sellPrice;
+        it.sellPrice = Math.max(10, Math.round(it.sellPrice * k));
+        after += it.sellPrice;
+      }
+      h.applied = steps;
+      h.lost = (h.lost || 0) + add;
+      saveState();
+      updateAllUI();
+      if (before > after) {
+        showToast(`🥶 Хаммам остыл — мемы замёрзли и потеряли ${add > 1 ? add + '×' : ''}10% стоимости (−${fmtMoney(before - after)})`);
+        haptic('error');
+      }
+    }
+    function hmFmt(ms) {
+      const s = Math.max(0, Math.ceil(ms / 1000));
+      const hh = Math.floor(s / 3600), mm = Math.floor(s % 3600 / 60), ss = s % 60;
+      return `${hh}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+    }
+    function renderHammam() {
+      const card = document.getElementById('hmCard');
+      if (!card) return;
+      const h = hmState();
+      const now = hmNow();
+      const title = document.getElementById('hmTitle'), sub = document.getElementById('hmSub'), btn = document.getElementById('hmBtn');
+      const end = h.heatedAt + HM_HEAT_MS;
+      card.className = 'hm-card';
+      if (h.heatedAt && now < end) {
+        card.classList.add('hot');
+        title.textContent = '♨️ Хаммам прогрет';
+        sub.textContent = `Тепло ещё ${hmFmt(end - now)}`;
+        btn.disabled = true;
+        btn.textContent = '♨️ Прогрет';
+      } else if (!h.heatedAt) {
+        title.textContent = '🧖 Хаммам холодный';
+        sub.textContent = 'Прогрей его — тепла хватит на 24 часа. Не забывай прогревать снова, иначе мемы замёрзнут.';
+        btn.disabled = false;
+        btn.textContent = '🔥 Прогреть хаммам';
+      } else {
+        const steps = hmSteps(h, now);
+        const nextLoss = end + (steps + 1) * HM_STEP_MS;
+        card.classList.add(h.applied > 0 ? 'frozen' : 'cooling');
+        title.textContent = h.applied > 0 ? `🥶 Мемы замёрзли: −10% ×${h.applied}` : '🌡️ Хаммам остывает!';
+        sub.textContent = h.applied > 0
+          ? `Мемы потеряли стоимость. Ещё −10% через ${hmFmt(nextLoss - now)} — прогрей хаммам!`
+          : `Прогрей за ${hmFmt(nextLoss - now)}, иначе мемы замёрзнут и потеряют 10% стоимости`;
+        btn.disabled = false;
+        btn.textContent = '🔥 Прогреть хаммам';
+      }
+      const dot = document.getElementById('garageBadge');
+      if (dot && h.heatedAt && now >= end) dot.classList.add('hm-alert'); else if (dot) dot.classList.remove('hm-alert');
+    }
+    window.heatHammam = function() {
+      hmApplyFreeze();
+      const h = hmState();
+      const now = hmNow();
+      if (h.heatedAt && now < h.heatedAt + HM_HEAT_MS) return;
+      h.heatedAt = now;
+      h.applied = 0;
+      saveState();
+      const card = document.getElementById('hmCard');
+      spawnParticlesFromEl(document.getElementById('hmBtn'), ['#f97316', '#fb923c', '#fde047', '#ef4444'], 40, 8);
+      card.classList.remove('heat-pop'); void card.offsetWidth; card.classList.add('heat-pop');
+      playTone(520, 0.12, 'triangle', 0.1); setTimeout(() => playTone(780, 0.16, 'triangle', 0.1), 120);
+      haptic('success');
+      showToast('♨️ Хаммам прогрет на 24 часа!');
+      renderHammam();
+    };
+    setTimeout(() => { hmApplyFreeze(); renderHammam(); }, 800);
+    setInterval(() => {
+      hmApplyFreeze();
+      if (currentPage === 'garage' || !document.hidden) renderHammam();
+    }, 1000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { hmApplyFreeze(); renderHammam(); } });
 
     function openRisk(which = riskTab) {
       switchTab(which === 'contracts' ? 'contracts' : 'upgrader');

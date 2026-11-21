@@ -7009,6 +7009,7 @@
     window.openUpgraderWithPlate = function(id) {
       if (isBusy()) return;
       const found = findItem(id);
+      if (found && found.item.locked) { showToast('🔒 Мем заблокирован — сначала разблокируй его'); haptic('warning'); return; }
       if (found && found.kind === 'car') return;
       if (found) upgKind = found.kind;
       selectedUpgradeId = String(id);
@@ -9910,7 +9911,7 @@
       };
     }
     function mdCheat() { return typeof lbCheating === 'function' && lbCheating(); }
-    function mdMemeList() { return state.garage.filter(p => itemKind(p) === 'plate' && !p.fav && !(isUpgrading && String(p.id) === String(upgradingPlateId))); }
+    function mdMemeList() { return state.garage.filter(p => itemKind(p) === 'plate' && !p.fav && !p.locked && !(isUpgrading && String(p.id) === String(upgradingPlateId))); }
 
     // Забрать мемы с сервера (выигрыш / возврат)
     async function mdClaimItems(toast = true) {
@@ -10522,10 +10523,15 @@
     window.toggleLock = function(id) {
       const p = state.garage.find(x => String(x.id) === String(id));
       if (!p || p.fav) return;
+      if (isUpgrading && String(upgradingPlateId) === String(p.id)) { showToast('Этот мем сейчас в апгрейдере'); return; }
       p.locked = !p.locked;
+      if (p.locked) {
+        if (String(selectedUpgradeId) === String(p.id)) selectedUpgradeId = null;
+        selectedContractIds = selectedContractIds.filter(cid => cid !== String(p.id));
+      }
       playTone(p.locked ? 520 : 700, 0.07, 'triangle', 0.08);
       haptic('light');
-      showToast(p.locked ? '🔒 Мем заблокирован — его нельзя продать, и «Продать всё» его не тронет' : '🔓 Мем разблокирован');
+      showToast(p.locked ? '🔒 Мем заблокирован — его нельзя продать, улучшить, отдать в контракт или поставить в дуэль' : '🔓 Мем разблокирован');
       saveState();
       updateAllUI();
     };
@@ -10778,7 +10784,7 @@
               ${p.fav ? `<div class="mini-actions"><div class="fav-badge" onclick="openMemeModal('${p.id}')">❤️ Любимый мем</div></div>` : `<div class="mini-actions">
                 <button class="sell-one-btn${p.locked ? ' is-locked' : ''}" title="${p.locked ? 'Заблокирован' : 'Продать'}" onclick="sellItem('${p.id}', this)" ${p.locked ? 'disabled' : dis}>${p.locked ? '🔒' : '💰'} ${fmtMoney(p.sellPrice)}</button>
                 <button class="icon-sq lock-btn${p.locked ? ' on' : ''}" title="${p.locked ? 'Разблокировать' : 'Заблокировать'}" aria-label="${p.locked ? 'Разблокировать' : 'Заблокировать'}" onclick="toggleLock('${p.id}')">${p.locked ? '🔒' : '🔓'}</button>
-                <button class="icon-sq quick-upg-btn" title="В апгрейд" onclick="openUpgraderWithPlate('${p.id}')" ${dis}>⚡</button>
+                <button class="icon-sq quick-upg-btn" title="В апгрейд" onclick="openUpgraderWithPlate('${p.id}')" ${p.locked ? 'disabled' : dis}>⚡</button>
               </div>`}
             </div>`).join('');
       }
@@ -10804,7 +10810,7 @@
       renderFortuneUI();
 
       // === АПГРЕЙДЕР ===
-      const upgList = sortItems(listOf(upgKind).filter(x => !x.fav), state.settings.sortUpg);
+      const upgList = sortItems(listOf(upgKind).filter(x => !x.fav && !x.locked), state.settings.sortUpg);
       document.querySelectorAll('#upgKindSwitch button').forEach(b => {
         b.classList.toggle('active', b.dataset.kind === upgKind);
         b.disabled = busy;
@@ -10870,7 +10876,7 @@
 
       // === КОНТРАКТЫ ===
       const cLim = getContractLimits();
-      const cList = listOf(contractKind).filter(x => !x.fav);
+      const cList = listOf(contractKind).filter(x => !x.fav && !x.locked);
       const cWhat = contractKind === 'car' ? 'мемчиков' : 'мемов';
       document.getElementById('contractHint').textContent = `Объедини от ${cLim.min} до ${cLim.max} ${cWhat} в один предмет ценой ×0.5–×3.0 от суммы.`;
       document.querySelectorAll('#contractKindSwitch button').forEach(b => {

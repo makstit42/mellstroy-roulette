@@ -4328,11 +4328,11 @@
     const UZ_VIP_COMBOS = ['OOQ', 'AAA', 'ZZZ', 'VVV', 'XXX', 'OOO', 'SSS', 'MMM', 'PPP', 'GGG', 'VIP', 'UZB', 'TOP', 'PRO', 'BMW', 'AMG'];
 
     const BASE_RARITIES = [
-      { id: 'common',    name: 'Обычный',     normalChance: 58, superChance: 0,  eliteChance: 0,  color: '#94a3b8', basePrice: 48 },
-      { id: 'uncommon',  name: 'Необычный',   normalChance: 25, superChance: 16, eliteChance: 0,  color: '#22c55e', basePrice: 176 },
-      { id: 'rare',      name: 'Редкий',      normalChance: 11, superChance: 40, eliteChance: 33, color: '#3b82f6', basePrice: 680 },
-      { id: 'epic',      name: 'Эпический',   normalChance: 4.5, superChance: 31, eliteChance: 51, color: '#a855f7', basePrice: 2560 },
-      { id: 'legendary', name: 'Легендарный', normalChance: 1.5, superChance: 13, eliteChance: 16, color: '#f59e0b', basePrice: 12000 }
+      { id: 'common',    name: 'Обычный',     normalChance: 58, superChance: 0,  eliteChance: 0,  color: '#94a3b8', basePrice: 53 },
+      { id: 'uncommon',  name: 'Необычный',   normalChance: 25, superChance: 16, eliteChance: 0,  color: '#22c55e', basePrice: 190 },
+      { id: 'rare',      name: 'Редкий',      normalChance: 11, superChance: 40, eliteChance: 33, color: '#3b82f6', basePrice: 748 },
+      { id: 'epic',      name: 'Эпический',   normalChance: 4.5, superChance: 31, eliteChance: 51, color: '#a855f7', basePrice: 2690 },
+      { id: 'legendary', name: 'Легендарный', normalChance: 1.5, superChance: 13, eliteChance: 16, color: '#f59e0b', basePrice: 12600 }
     ];
 
     // === СТОИМОСТЬ КРУТОК И ОПЫТ ===
@@ -10679,6 +10679,20 @@
     setInterval(() => { if (document.getElementById('settingsModal').classList.contains('open')) mpTick(); }, 500);
     document.getElementById('settingsBtn').addEventListener('click', () => setTimeout(renderPlayer, 30));
     document.getElementById('setMusicToggle').addEventListener('change', () => setTimeout(renderPlayer, 30));
+
+
+    // Разовое повышение цены уже лежащих мемов и мемчиков — так же, как подняли базовые цены
+    (function() {
+      if (state.priceUp1) return;
+      const K = { common: 53 / 48, uncommon: 190 / 176, rare: 748 / 680, epic: 2690 / 2560, legendary: 12600 / 12000 };
+      for (const it of [...(state.garage || []), ...(state.cars || [])]) {
+        const rid = it && it.rarity && it.rarity.id;
+        if (K[rid]) it.sellPrice = Math.round(it.sellPrice * K[rid]);
+        if (it && it.rarity && rid) { const r = BASE_RARITIES.find(x => x.id === rid); if (r) it.rarity = r; }
+      }
+      state.priceUp1 = 1;
+      saveState();
+    })();
 
     function openRisk(which = riskTab) {
       switchTab(which === 'contracts' ? 'contracts' : 'upgrader');

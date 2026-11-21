@@ -3415,6 +3415,16 @@
     .md-pct { text-align: center; font-weight: 900; font-size: 1.1rem; }
     .md-pct.green { color: #22c55e; }
     .md-pct.red { color: #ef4444; }
+
+    /* Шапка на телефонах: компактные кнопки, таймер колеса только в самом колесе */
+    @media (max-width: 440px) {
+      .topbar { gap: 6px; }
+      .top-btn { min-width: 40px; padding: 0 8px; font-size: 1.05rem; }
+      .lvl-ring { width: 40px; height: 40px; }
+      .wheel-open-text { display: none; }
+      .balance-box { padding: 0 10px; gap: 5px; }
+    }
+    .bal-val { text-overflow: clip; }
   </style>
 </head>
 <body>
@@ -10123,6 +10133,45 @@
       clearInterval(MD.timerT);
       document.getElementById('mdModal').classList.remove('open');
     };
+
+
+    // ---------- баланс всегда целиком: уменьшаем шрифт, а если не влезает — «12,3 млн ₽» ----------
+    (function() {
+      const el = document.getElementById('balanceDisplay');
+      if (!el) return;
+      let busy = false;
+      const compact = (txt) => {
+        const m = txt.match(/^(-?[\d\s\u00a0\u202f]+)(.*)$/);
+        if (!m) return txt;
+        const n = Number(m[1].replace(/[\s\u00a0\u202f]/g, ''));
+        const sym = m[2].trim();
+        const f = (v, s) => (v >= 100 ? Math.round(v) : Math.round(v * 10) / 10).toLocaleString('ru-RU') + ' ' + s + ' ' + sym;
+        if (Math.abs(n) >= 1e9) return f(n / 1e9, 'млрд');
+        if (Math.abs(n) >= 1e6) return f(n / 1e6, 'млн');
+        if (Math.abs(n) >= 1e4) return f(n / 1e3, 'тыс.');
+        return txt;
+      };
+      function fit() {
+        if (busy) return;
+        busy = true;
+        el.style.fontSize = '';
+        el.title = '';
+        let size = 1;
+        while (el.scrollWidth > el.clientWidth + 1 && size > 0.72) { size -= 0.04; el.style.fontSize = size + 'em'; }
+        if (el.scrollWidth > el.clientWidth + 1) {
+          const full = el.textContent;
+          el.style.fontSize = '';
+          el.textContent = compact(full);
+          el.title = full;
+          size = 1;
+          while (el.scrollWidth > el.clientWidth + 1 && size > 0.72) { size -= 0.04; el.style.fontSize = size + 'em'; }
+        }
+        busy = false;
+      }
+      new MutationObserver(() => { if (!busy) requestAnimationFrame(fit); }).observe(el, { childList: true, characterData: true, subtree: true });
+      window.addEventListener('resize', () => requestAnimationFrame(fit));
+      setTimeout(fit, 0);
+    })();
 
     function openRisk(which = riskTab) {
       switchTab(which === 'contracts' ? 'contracts' : 'upgrader');

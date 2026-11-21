@@ -3848,7 +3848,7 @@
           <label class="toggle-row"><span>🎵 Музыка</span><input type="checkbox" id="setMusicToggle" /></label>
           <div class="vol-row">🔉 <input type="range" id="setMusicVol" min="0" max="1" step="0.05" aria-label="Громкость музыки" /></div>
           <label class="toggle-row"><span>📳 Вибрация<small>Отклик при крутках (в Telegram)</small></span><input type="checkbox" id="setHapticsToggle" /></label>
-          <label class="toggle-row"><span>🔔 Уведомления от бота<small>Колесо, дуэли, турнир, «тебя обогнали»</small></span><input type="checkbox" id="setNotifyToggle" /></label>
+          <label class="toggle-row"><span>🔔 Уведомления от бота<small>Колесо, дуэли, турнир, хаммам, «тебя обогнали»</small></span><input type="checkbox" id="setNotifyToggle" /></label>
           <label class="toggle-row"><span>⚡ Быстрые крутки<small>Только рулетка: результат сразу. Апгрейд, контракт и колесо — всегда с анимацией</small></span><input type="checkbox" id="setSkipAnimToggle" /></label>
         </div>
       </div>
@@ -9357,7 +9357,7 @@
     const SOC = { me: null, busy: false, lastSync: 0, duelMode: 'normal', duelRounds: 1, duelTimer: null, battle: null };
     // Новые функции включаются, только если сервер уже обновлён (version >= 2)
     const socOn = () => Boolean(LB_URL && inTelegram && SOC.v2);
-    if (LB_URL) fetch(LB_URL + '/').then(r => r.json()).then(d => { SOC.v2 = Boolean(d && d.version >= 2); SOC.v3 = Boolean(d && d.version >= 3); SOC.v4 = Boolean(d && d.version >= 4); if (SOC.v4) setTimeout(() => mdResume(), 2500); if (SOC.v2) socSync(true); }).catch(() => {});
+    if (LB_URL) fetch(LB_URL + '/').then(r => r.json()).then(d => { SOC.v2 = Boolean(d && d.version >= 2); SOC.v3 = Boolean(d && d.version >= 3); SOC.v4 = Boolean(d && d.version >= 4); SOC.v6 = Boolean(d && d.version >= 6); if (SOC.v4) setTimeout(() => mdResume(), 2500); if (SOC.v2) socSync(true); }).catch(() => {});
 
     function socApi(path, body = {}) {
       return fetch(LB_URL + path, {
@@ -10489,7 +10489,20 @@
       haptic('success');
       showToast('♨️ Хаммам прогрет на 24 часа!');
       renderHammam();
+      hmSyncServer();
     };
+    // Сообщаем серверу время прогрева — бот напомнит, когда хаммам начнёт остывать
+    async function hmSyncServer() {
+      const h = hmState();
+      if (!h.heatedAt || h.syncedAt === h.heatedAt) return;
+      if (typeof socOn !== 'function' || !socOn() || !SOC.v6) return;
+      try {
+        const res = await socApi('/hammam', { at: h.heatedAt });
+        if (res && res.ok) { h.syncedAt = h.heatedAt; saveState(); }
+      } catch (e) {}
+    }
+    setTimeout(hmSyncServer, 5000);
+    setInterval(hmSyncServer, 60000);
     setTimeout(() => { hmApplyFreeze(); renderHammam(); }, 800);
     setInterval(() => {
       hmApplyFreeze();

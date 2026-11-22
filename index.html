@@ -3896,6 +3896,11 @@
     /* монеты */
     .coin-layer { position: fixed; inset: 0; pointer-events: none; z-index: 3200; overflow: hidden; }
     .fly-coin { position: fixed; font-size: 1.3rem; line-height: 1; will-change: transform, opacity; opacity: 0; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.45)); }
+    .coin-bal { position: fixed; top: calc(var(--safe-top, 0px) + 10px); z-index: 3150; pointer-events: none;
+      transform: translateY(calc(-100% - var(--safe-top, 0px) - 24px)); transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1); }
+    .coin-bal.show { transform: none; }
+    .coin-bal .balance-box { box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); }
+    html.glass .coin-bal .balance-box { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), 0 10px 28px rgba(0, 0, 0, 0.55); }
     .balance-box.coin-hit { animation: coinHit 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); border-color: #22c55e; }
     @keyframes coinHit { 0% { transform: scale(1); } 40% { transform: scale(1.07); } 100% { transform: scale(1); } }
     /* плашка достижения */
@@ -4619,6 +4624,7 @@
 
   <div class="ach-pop" id="achPop" aria-live="polite"></div>
   <div class="coin-layer" id="coinLayer" aria-hidden="true"></div>
+  <div class="coin-bal" id="coinBal" aria-hidden="true"><div class="balance-box"><span>💰</span><span class="bal-val" id="coinBalVal"></span></div></div>
 
   <div class="lang-pick" id="langPick" hidden>
     <div class="lang-box" data-noi18n>
@@ -12742,8 +12748,41 @@
     document.addEventListener('pointerdown', (e) => { TAP.x = e.clientX; TAP.y = e.clientY; TAP.t = Date.now(); }, true);
 
     // ---------- 🪙 монеты летят к балансу ----------
-    // Летят только если баланс виден на экране (не прокручен и не закрыт окном), по плавной дуге прямо в 💰
+    // Летят по плавной дуге прямо в 💰. Если баланс прокручен за экран или закрыт окном —
+    // сверху выезжает мини-плашка баланса, монеты летят в неё, сумма растёт, плашка уезжает.
     let coinLast = 0;
+    const CB = { shown: 0, to: 0, hideT: 0, raf: 0 };
+    function coinBalShow(delta, box) {
+      const wrap = document.getElementById('coinBal'), val = document.getElementById('coinBalVal');
+      if (!wrap || !val) return null;
+      const visible = wrap.classList.contains('show');
+      if (!visible) { CB.shown = state.balance - delta; val.textContent = fmtMoney(CB.shown); }
+      CB.to = state.balance;
+      clearTimeout(CB.hideT);
+      wrap.style.left = Math.max(12, Math.round(box.getBoundingClientRect().left)) + 'px';
+      // меряем конечное положение плашки, затем плавно выдвигаем её
+      wrap.style.transition = 'none'; wrap.classList.add('show');
+      const r = wrap.querySelector('span').getBoundingClientRect();
+      if (!visible) { wrap.classList.remove('show'); void wrap.offsetWidth; }
+      wrap.style.transition = ''; wrap.classList.add('show');
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2, box: wrap.firstElementChild };
+    }
+    function coinBalCount() {
+      const val = document.getElementById('coinBalVal');
+      const from = CB.shown, to = CB.to, t0 = performance.now();
+      cancelAnimationFrame(CB.raf);
+      const step = (now) => {
+        const t = Math.min(1, (now - t0) / 450), e = 1 - Math.pow(1 - t, 3);
+        CB.shown = from + (to - from) * e;
+        val.textContent = fmtMoney(Math.round(CB.shown));
+        if (t < 1) CB.raf = requestAnimationFrame(step);
+      };
+      CB.raf = requestAnimationFrame(step);
+    }
+    function coinBalHide() {
+      clearTimeout(CB.hideT);
+      CB.hideT = setTimeout(() => document.getElementById('coinBal').classList.remove('show'), 1100);
+    }
     function coinBurst(delta) {
       if (FX_REDUCED() || document.hidden) return;
       const now = Date.now();
@@ -12751,27 +12790,37 @@
       const box = document.getElementById('balanceBox');
       const layer = document.getElementById('coinLayer');
       if (!box || !layer) return;
+      coinLast = now;
       const ico = box.firstElementChild || box;
       const ir = ico.getBoundingClientRect();
-      const tx = ir.left + ir.width / 2, ty = ir.top + ir.height / 2;
-      if (ir.bottom < 6 || ir.top > window.innerHeight - 6 || tx < 0 || tx > window.innerWidth) return;
-      const hit = (document.elementsFromPoint(tx, ty) || []).find(h => !h.closest('#achPop, .toast, #coinLayer'));
-      if (!hit || !box.contains(hit)) return;
-      coinLast = now;
-      const br = box.getBoundingClientRect();
+      let tx = ir.left + ir.width / 2, ty = ir.top + ir.height / 2;
+      let onScreen = ir.top >= 2 && ir.bottom <= window.innerHeight - 2 && tx > 0 && tx < window.innerWidth;
+      if (onScreen) {
+        const hit = (document.elementsFromPoint(tx, ty) || []).find(h => !h.closest('#achPop, .toast, #coinLayer, #coinBal'));
+        onScreen = !!hit && box.contains(hit);
+      }
+      let hitBox = box, chip = null;
+      if (!onScreen) {
+        chip = coinBalShow(delta, box);
+        if (!chip) return;
+        tx = chip.x; ty = chip.y; hitBox = chip.box;
+      }
+      const br = onScreen ? box.getBoundingClientRect() : { bottom: -999, right: -999 };
       const fromTap = now - TAP.t < 1500 && !(TAP.y <= br.bottom + 6 && TAP.x <= br.right + 6);
       const sx = fromTap ? TAP.x : window.innerWidth / 2, sy = fromTap ? TAP.y : window.innerHeight * 0.45;
-      const n = Math.max(4, Math.min(9, Math.round(2 + Math.log10(Math.max(10, delta)) * 1.5)));
+      // чем больше сумма, тем больше монет: $100 → 3, $1 000 → 8, $10 000 → 13, $100 000 → 18, максимум 22
+      const n = Math.max(3, Math.min(22, Math.round((Math.log10(Math.max(100, delta)) - 2) * 5 + 3)));
+      const gap = Math.min(55, 750 / n);
       const side = sx >= tx ? 1 : -1;
       for (let i = 0; i < n; i++) {
         const c = document.createElement('span');
         c.className = 'fly-coin';
-        c.textContent = i % 3 === 1 ? '💵' : '🪙';
+        c.textContent = delta >= 10000 && i % 5 === 2 ? '💰' : i % 3 === 1 ? '💵' : '🪙';
         c.style.left = tx + 'px'; c.style.top = ty + 'px';
         layer.appendChild(c);
         // 1) монетки разлетаются веером от точки нажатия
         const ang = -Math.PI / 2 + (i / Math.max(1, n - 1) - 0.5) * 2.4 + (Math.random() - 0.5) * 0.3;
-        const rad = 26 + Math.random() * 20;
+        const rad = 26 + Math.random() * 20 + Math.min(24, n * 1.2);
         const bx = sx + Math.cos(ang) * rad, by = sy + Math.sin(ang) * rad;
         // 2) дальше одна плавная дуга до 💰 (без вылета за экран)
         const dx = tx - bx, dy = ty - by, len = Math.hypot(dx, dy) || 1;
@@ -12791,11 +12840,15 @@
           const x = v * v * bx + 2 * v * u * cx + u * u * tx, y = v * v * by + 2 * v * u * cy + u * u * ty;
           kf.push({ ...at(x, y, 1.15 - 0.6 * u, t > 0.9 ? 1 - (t - 0.9) * 8 : 1, rot * u), offset: P1 + (1 - P1) * t });
         }
-        const anim = c.animate(kf, { duration: 760 + Math.random() * 120, delay: i * 55, easing: 'linear', fill: 'forwards' });
+        const anim = c.animate(kf, { duration: 760 + Math.random() * 120, delay: i * gap, easing: 'linear', fill: 'forwards' });
         anim.onfinish = () => {
           c.remove();
-          if (i === n - 1) { box.classList.remove('coin-hit'); void box.offsetWidth; box.classList.add('coin-hit'); setTimeout(() => box.classList.remove('coin-hit'), 500); }
-          if (i % 2 === 0) playTone(1180 + Math.random() * 300, 0.03, 'triangle', 0.025);
+          if (i === 0 && chip) coinBalCount();
+          if (i === n - 1) {
+            hitBox.classList.remove('coin-hit'); void hitBox.offsetWidth; hitBox.classList.add('coin-hit'); setTimeout(() => hitBox.classList.remove('coin-hit'), 500);
+            if (chip) coinBalHide();
+          }
+          if (i % Math.max(2, Math.round(n / 5)) === 0) playTone(1180 + Math.random() * 300, 0.03, 'triangle', 0.025);
         };
       }
     }

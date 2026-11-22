@@ -5255,20 +5255,44 @@
       cloudTimer = setTimeout(cloudSave, delay);
     }
 
+    // --- синхронизация между устройствами: номер ревизии + id устройства ---
+    const SYNC = (() => { try { return JSON.parse(localStorage.getItem('plateProSync')) || {}; } catch (_) { return {}; } })();
+    if (!SYNC.dev) SYNC.dev = Math.random().toString(36).slice(2, 7).replace(/[^a-z0-9]/g, 'x');
+    const syncPersist = () => { try { localStorage.setItem('plateProSync', JSON.stringify(SYNC)); } catch (_) {} };
+    syncPersist();
+    let userActT = Date.now();
+    ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => { userActT = Date.now(); }, { passive: true, capture: true }));
+    // игрок что-то делал за последнюю минуту (или идёт автокрутка) — тогда можно писать в облако
+    const userActive = () => Date.now() - userActT < 60000 || (() => { try { return autoSpin; } catch (_) { return false; } })();
+    // только ASCII: кусок не разрежет эмодзи пополам
+    const asciiSafe = (s) => s.replace(/[\u007f-￿]/g, c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+    const cloudMeta = async () => { try { return JSON.parse((await cloudCall('getItem', 'pr_meta')) || 'null'); } catch (_) { return null; } };
+    const cloudNewer = (meta) => Boolean(meta && meta.n && meta.slot && (meta.rev || 0) > (SYNC.rev || 0) && meta.dev !== SYNC.dev);
+
     async function cloudSave() {
       if (!cloudAvailable() || !cloudDirty) return;
       if (cloudBusy) { scheduleCloudSave(800); return; }
       cloudBusy = true;
-      cloudDirty = false;
       try {
-        const data = packState(state);
-        const meta = JSON.parse((await cloudCall('getItem', 'pr_meta')) || '{}');
-        const slot = meta.slot === 'a' ? 'b' : 'a';
+        const meta = (await cloudMeta()) || {};
+        if (cloudNewer(meta)) {
+          // другое устройство сохранило позже — не затираем его прогресс, а берём его
+          cloudBusy = false;
+          if (!(await cloudAdopt(meta))) { clearTimeout(cloudTimer); cloudTimer = setTimeout(cloudSave, 4000); }
+          return;
+        }
+        // фоновые изменения (питомец, хаммам) без действий игрока держим только на устройстве
+        if (!userActive()) { cloudBusy = false; return; }
+        cloudDirty = false;
+        const data = asciiSafe(packState(state));
+        const slot = SYNC.dev + (meta.slot === SYNC.dev + 'a' ? 'b' : 'a');
         const n = Math.ceil(data.length / CLOUD_CHUNK);
         for (let i = 0; i < n; i++) {
           await cloudCall('setItem', `pr_${slot}${i}`, data.slice(i * CLOUD_CHUNK, (i + 1) * CLOUD_CHUNK));
         }
-        await cloudCall('setItem', 'pr_meta', JSON.stringify({ v: 1, slot, n, t: state.savedAt || Date.now() }));
+        const rev = Math.max(meta.rev || 0, SYNC.rev || 0) + 1;
+        await cloudCall('setItem', 'pr_meta', JSON.stringify({ v: 2, slot, n, rev, dev: SYNC.dev, t: state.savedAt || Date.now() }));
+        SYNC.rev = rev; syncPersist();
         cloudLastOk = Date.now();
       } catch (_) {
         cloudDirty = true;
@@ -5279,14 +5303,48 @@
       renderSaveStatus();
     }
 
-    async function cloudLoad() {
-      const meta = JSON.parse((await cloudCall('getItem', 'pr_meta')) || 'null');
+    async function cloudLoad(meta) {
+      meta = meta || await cloudMeta();
       if (!meta || !meta.n || !meta.slot) return null;
       const keys = Array.from({ length: meta.n }, (_, i) => `pr_${meta.slot}${i}`);
       const parts = await cloudCall('getItems', keys);
       const text = keys.map(k => parts[k] || '').join('');
       return normalizeState(unpackState(text));
     }
+
+    // Подтянуть прогресс, который сохранило другое устройство
+    let cloudAdopting = false;
+    async function cloudAdopt(meta) {
+      if (cloudAdopting) return false;
+      // посреди крутки, апгрейда или раунда Краша/Сапёра не подменяем — попробуем чуть позже
+      if (isBusy() || state.crash || state.mines) return false;
+      cloudAdopting = true;
+      try {
+        const st = await cloudLoad(meta);
+        if (!st || typeof st.balance !== 'number') return false;
+        if (isBusy() || state.crash || state.mines) return false;
+        document.querySelectorAll('.modal-overlay.open').forEach(m => { const b = m.querySelector('.close-modal-btn'); if (b) b.click(); else m.classList.remove('open'); });
+        applyLoadedState(st);
+        SYNC.rev = meta.rev || 0; syncPersist();
+        cloudDirty = false; clearTimeout(cloudTimer);
+        try { localStorage.setItem('plateProState', JSON.stringify(state)); } catch (_) {}
+        try { if (typeof petRenderCard === 'function') petRenderCard(); if (typeof renderHammam === 'function') renderHammam(); } catch (_) {}
+        cloudLastOk = Date.now(); renderSaveStatus();
+        showToast('☁️ Подтянули свежий прогресс с другого устройства');
+        return true;
+      } catch (_) { return false; }
+      finally { cloudAdopting = false; }
+    }
+
+    // Пока игра открыта — раз в 20 с и при возвращении в неё сверяемся с облаком
+    async function cloudCheck() {
+      if (!cloudReady || !cloudAvailable() || cloudBusy || document.hidden) return;
+      const meta = await cloudMeta();
+      if (cloudNewer(meta)) await cloudAdopt(meta);
+    }
+    setInterval(cloudCheck, 20000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(cloudCheck, 300); });
+    window.addEventListener('focus', () => setTimeout(cloudCheck, 300));
 
     // Когда игру сворачивают — сразу досохраняем в облако
     document.addEventListener('visibilitychange', () => {
@@ -14269,22 +14327,29 @@
       let finished = false;
       const done = () => { if (finished) return; finished = true; clearTimeout(showTimer); finishBoot(); };
       setTimeout(done, 6000); // облако не ответило — играем с локальным сохранением
-      cloudLoad().then(cloudState => {
+      cloudMeta().then(async meta => {
         if (finished) return;
-        const localT = state.savedAt || 0;
-        const cloudT = cloudState ? (cloudState.savedAt || 0) : -1;
-        if (cloudState && cloudT > localT) {
-          applyLoadedState(cloudState);
-          try { localStorage.setItem('plateProState', JSON.stringify(state)); } catch (_) {}
-          setTimeout(() => showToast('☁️ Прогресс загружен из облака Telegram'), 300);
-          done();
-        } else {
-          done();
-          // В облаке ничего нет или локально новее — отправляем в облако
-          if (!state.savedAt) state.savedAt = Date.now();
-          try { localStorage.setItem('plateProState', JSON.stringify(state)); } catch (_) {}
-          scheduleCloudSave(200);
+        const has = Boolean(meta && meta.n && meta.slot);
+        // Обе стороны уже с ревизиями — сравниваем ревизии; иначе (старое сохранение) — по времени, как раньше
+        const useCloud = has && (meta.rev && SYNC.rev ? cloudNewer(meta) : (meta.t || 0) > (state.savedAt || 0));
+        if (useCloud) {
+          const cloudState = await cloudLoad(meta);
+          if (finished) return;
+          if (cloudState) {
+            applyLoadedState(cloudState);
+            SYNC.rev = meta.rev || 0; syncPersist();
+            try { localStorage.setItem('plateProState', JSON.stringify(state)); } catch (_) {}
+            setTimeout(() => showToast('☁️ Прогресс загружен из облака Telegram'), 300);
+            done();
+            return;
+          }
         }
+        done();
+        // В облаке ничего нет или здесь новее — отправляем в облако (и считаем себя наследником облачной ревизии)
+        if (has && (meta.rev || 0) > (SYNC.rev || 0)) { SYNC.rev = meta.rev; syncPersist(); }
+        if (!state.savedAt) state.savedAt = Date.now();
+        try { localStorage.setItem('plateProState', JSON.stringify(state)); } catch (_) {}
+        scheduleCloudSave(200);
       }).catch(done);
     } else {
       finishBoot();

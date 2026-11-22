@@ -14748,7 +14748,53 @@
         for (let k = 0; k < 20; k++) { const t = tl[Math.floor(Math.random() * tl.length)]; if (Math.abs(t[0] - cx) + Math.abs(t[1] - cy) < 14 && los(n.x, n.y, (t[0] + 0.5) * T, (t[1] + 0.5) * T)) { n.tx = (t[0] + 0.5) * T; n.ty = (t[1] + 0.5) * T; return; } }
         n.tx = n.x + rnd(-60, 60); n.ty = n.y + rnd(-60, 60);
       }
+      // ---------- мемы в хаммаме и панельках по очереди «оживают» со звуком ----------
+      const NV = { v: null, cv: null, ctx: null, n: null, gain: null, cd: 0.6, t: 0, recent: [] };
+      function npcVideo() {
+        if (NV.v) return NV.v;
+        const v = document.createElement('video');
+        v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto';
+        v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none;z-index:-1';
+        document.body.appendChild(v);
+        NV.v = v; NV.cv = mkCanvas(380, 260); NV.ctx = NV.cv.getContext('2d', { willReadFrequently: true });
+        try { const ctx = getAudioCtx(), src = ctx.createMediaElementSource(v); NV.gain = ctx.createGain(); NV.gain.gain.value = 0.95; src.connect(NV.gain); NV.gain.connect(ctx.destination); } catch (e) {}
+        v.onended = () => npcStop(true);
+        return v;
+      }
+      function hmSongDuck(on) {
+        if (!HMS.gain || !HMS.src) return;
+        try { const ctx = getAudioCtx(), vol = state.settings.music !== false ? Math.max(0.12, musicVolume()) : 0.16; HMS.gain.gain.cancelScheduledValues(ctx.currentTime); HMS.gain.gain.setTargetAtTime(on ? vol * 0.25 : vol, ctx.currentTime, 0.25); } catch (e) {}
+      }
+      function npcPlay(n) {
+        const v = npcVideo();
+        NV.n = n; NV.t = 0; NV.ctx._mf = null;
+        setMemeSrc(v, n.mid);
+        v.muted = !soundEnabled;
+        try { v.currentTime = 0; } catch (e) {}
+        v.play().catch(() => { v.muted = true; v.play().catch(() => npcStop(true)); });
+        hmSongDuck(true);
+      }
+      function npcStop(done) {
+        if (NV.n) { NV.recent.push(NV.n); if (NV.recent.length > 2) NV.recent.shift(); }
+        NV.n = null;
+        if (NV.v) { try { NV.v.pause(); } catch (e) {} }
+        NV.cd = done ? rnd(1.2, 2.6) : 0.6;
+        hmSongDuck(false);
+      }
+      function updateNpcVideo(dt) {
+        const b = IP.inB, P = IP.P;
+        if (NV.n && (NV.n.b !== b || P.dead)) npcStop(false);
+        if (NV.n) { NV.t += dt; if (NV.t > 9) npcStop(true); return; }
+        if (b !== 0 && b !== 3 && b !== 6) return;
+        NV.cd -= dt; if (NV.cd > 0) return;
+        let c = A.npc.filter(n => n.b === b && n.img && (n.role === 'hammam' || n.role === 'home'));
+        if (!c.length) return;
+        const fresh = c.filter(n => !NV.recent.includes(n)); if (fresh.length) c = fresh;
+        c.sort((a, q) => dist2(a.x, a.y, P.x, P.y) - dist2(q.x, q.y, P.x, P.y));
+        npcPlay(c[Math.random() < 0.6 ? 0 : Math.floor(Math.random() * c.length)]);
+      }
       function updateNpcs(dt) {
+        updateNpcVideo(dt);
         const P = IP.P, talk = (n, kind) => { if (A.npc.some(o => o !== n && o.say && dist2(o.x, o.y, n.x, n.y) < 200 * 200)) return; n.say = tr(pick(kind === 'hammam' ? NPC_SAY : ROLE_SAY[kind] || ROLE_SAY.walk)); n.sayT = 2.4; };
         for (const n of A.npc) {
           n.sayT -= dt; if (n.sayT <= 0) n.say = '';
@@ -15061,7 +15107,7 @@
         if (src === 'wave') startWave();
         kick();
       };
-      function pause() { if (IP.mode !== 'play' || IP.paused) return; hmSong(false); IP.paused = true; IP.joy = null; IP.input.x = IP.input.y = 0; $('ipPauseInfo').innerHTML = runSummaryHTML(); screen('ipPauseScr'); }
+      function pause() { if (IP.mode !== 'play' || IP.paused) return; hmSong(false); npcStop(false); IP.paused = true; IP.joy = null; IP.input.x = IP.input.y = 0; $('ipPauseInfo').innerHTML = runSummaryHTML(); screen('ipPauseScr'); }
       window.ipResume = function() { if (IP.pickSrc) { screen('ipPick'); return; } IP.paused = false; IP.last = performance.now(); screen(''); kick(); };
       window.ipExitRun = function() { const r = finishRun(); closeGame(); if (r && (r.money || r.xp)) setTimeout(() => showToast(`🚔 ${tr('Забег окончен')}: +${fmtMoney(r.money)} · +${r.xpShown} XP`), 400); };
       function runSummaryHTML() {
@@ -15083,7 +15129,7 @@
         return { money, xp, xpShown: Math.round(xpArg * 2.5) };
       }
       function gameOver() {
-        hmSong(false);
+        hmSong(false); npcStop(false);
         IP.mode = 'over'; IP.timeScale = 1;
         const r = IP.run, res = finishRun() || { money: 0, xpShown: 0 };
         $('ipOverTitle').textContent = r.record && r.waves > 0 ? '🏆 ' + tr('Новый рекорд!') : '🚔 ' + tr('Тебя поймал Интерпол!');
@@ -15141,11 +15187,14 @@
         if (n.walker && n.moving) { sway = Math.sin(n.walk) * 0.08; bob = Math.abs(Math.sin(n.walk)) * 3; }
         if (n.role === 'ball') bob = Math.abs(Math.sin(t * 4)) * 5;
         if (!n.swim) { c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(n.x, n.y, w * 0.32, 5, 0, 0, 7); c.fill(); }
+        const live = NV.n === n && NV.v && NV.v.readyState >= 2;
         c.save(); c.translate(n.x, n.y); if (n.face < 0) c.scale(-1, 1);
         if (n.swim) { c.beginPath(); c.rect(-w, -h - 10, w * 2, h + 8); c.clip(); }
         c.rotate(sway);
-        c.drawImage(n.img, cr.x, cr.y, cr.w, cr.h, -w / 2, -h + bob + (n.swim ? h * 0.32 : 0), w, h);
+        if (live) { memeDrawFrame(NV.ctx, NV.v); c.drawImage(NV.cv, -w / 2 - cr.x * k, -h + bob + (n.swim ? h * 0.32 : 0) - cr.y * k, NV.cv.width * k, NV.cv.height * k); }
+        else c.drawImage(n.img, cr.x, cr.y, cr.w, cr.h, -w / 2, -h + bob + (n.swim ? h * 0.32 : 0), w, h);
         c.restore();
+        if (live) { c.font = '15px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.globalAlpha = 0.7 + Math.sin(IP.t * 10) * 0.3; c.fillText('🔊', n.x + w * 0.45, n.y - h - 2); c.globalAlpha = 1; }
         if (n.swim) { c.strokeStyle = 'rgba(255,255,255,0.55)'; c.lineWidth = 1.5; for (let r = 0; r < 2; r++) { const rr0 = 10 + ((t * 9 + r * 9) % 18); c.globalAlpha = 1 - rr0 / 28; c.beginPath(); c.ellipse(n.x, n.y - 2, rr0 * 1.4, rr0 * 0.45, 0, 0, 7); c.stroke(); } c.globalAlpha = 1; }
         if (n.say) { c.font = '800 11px system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; const tw = c.measureText(n.say).width + 14, by = n.y - h - 16; c.fillStyle = 'rgba(255,255,255,0.92)'; rr(c, n.x - tw / 2, by - 10, tw, 20, 9); c.fill(); c.fillStyle = '#0f172a'; c.fillText(n.say, n.x, by); }
       }
@@ -15248,7 +15297,7 @@
         kick(); haptic('light');
       };
       function closeGame() {
-        hmSong(false);
+        hmSong(false); npcStop(false);
         IP.on = false; IP.mode = 'menu'; if (IP.raf) cancelAnimationFrame(IP.raf); IP.raf = 0;
         $('ipGame').hidden = true; document.documentElement.classList.remove('ip-open');
         try { syncTelegramChrome(); } catch (e) {}
@@ -15312,7 +15361,7 @@
       window.renderIpCard = renderIpCard;
       setTimeout(renderIpCard, 600);
       // для проверок
-      window.IPG = { HMS, IP, M, R, A, ETYPES, UPG, spawnEnemy, step, applyUpg, startWave, fightWave, explodeBarrel, useSpot, buildFlow, los, draw, hud, resize, banner, gameOver, finishRun, T, getChunk, CPX, CHUNK, MW, MH, FLOW, flowDir, buildSprites, spotReady, kick, dash, openPick };
+      window.IPG = { NV, HMS, IP, M, R, A, ETYPES, UPG, spawnEnemy, step, applyUpg, startWave, fightWave, explodeBarrel, useSpot, buildFlow, los, draw, hud, resize, banner, gameOver, finishRun, T, getChunk, CPX, CHUNK, MW, MH, FLOW, flowDir, buildSprites, spotReady, kick, dash, openPick };
 
     })();
     // ===== /🚔 конец игры =====

@@ -12898,6 +12898,32 @@
       setTimeout(() => w.remove(), 650);
     }, { passive: true });
 
+    // ---------- 📌 экран не прыгает вверх при продаже/действиях с карточками ----------
+    // После нажатия на кнопку карточки запоминаем прокрутку и ~1.2 с возвращаем её, если страницу дёрнуло вверх
+    // (пока палец на экране — не мешаем, это прокрутка самого игрока).
+    const SG = { y: -1, until: 0, touching: false, raf: 0 };
+    document.addEventListener('touchstart', () => { SG.touching = true; }, { passive: true, capture: true });
+    document.addEventListener('touchend', () => { SG.touching = false; }, { passive: true, capture: true });
+    document.addEventListener('touchcancel', () => { SG.touching = false; }, { passive: true, capture: true });
+    function sgCheck() {
+      if (SG.y < 0 || Date.now() > SG.until) { SG.y = -1; return false; }
+      if (SG.touching) { SG.y = -1; return false; }
+      const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      const want = Math.min(SG.y, max);
+      if (window.scrollY < want - 30) window.scrollTo(0, want);
+      return true;
+    }
+    function scrollGuard(ms) {
+      SG.y = window.scrollY; SG.until = Date.now() + ms;
+      cancelAnimationFrame(SG.raf);
+      const loop = () => { if (sgCheck()) SG.raf = requestAnimationFrame(loop); };
+      SG.raf = requestAnimationFrame(loop);
+    }
+    window.addEventListener('scroll', sgCheck, { passive: true });
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('#garageList button, #carList button, #garageList .mini-card, #carList .mini-card')) scrollGuard(1200);
+    }, true);
+
     // ---------- 🃏 каскадное появление карточек и списков ----------
     function staggerIn(el) {
       if (!el || FX_REDUCED() || !el.children.length) return;

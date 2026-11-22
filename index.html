@@ -12795,13 +12795,18 @@
       if (!PREACT.v[key]) { const v = document.createElement('video'); v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto'; v.style.display = 'none'; v.src = petClipUrl(key); v.dataset.clip = '0'; document.body.appendChild(v); PREACT.v[key] = v; }
       const v = PREACT.v[key];
       PREACT.playing = true; PREACT.after = afterText || ''; PREACT.host = host; PREACT.key = key;
+      const fit0 = petFitMeasure(el);
       el.dataset.mid = '';
       el.innerHTML = '<canvas class="pet-feed-cv" width="400" height="284"></canvas>';
+      const fitCv = el.querySelector('canvas');
+      let fitTries = fit0 ? 0 : -1;
+      if (fit0) fitCv.style.visibility = 'hidden';
       const ctx = el.querySelector('canvas').getContext('2d', { willReadFrequently: true });
       const draw = () => {
         if (!PREACT.playing) return;
         if (!document.getElementById(modalId).classList.contains('open')) { petReactEnd(); return; }
         memeDrawFrame(ctx, v);
+        if (fitTries >= 0 && v.readyState >= 2) { if (petFitApply(fitCv, fit0) || ++fitTries > 30) { fitTries = -1; fitCv.style.visibility = ''; } }
         PREACT.raf = requestAnimationFrame(draw);
       };
       v.onplaying = () => { cancelAnimationFrame(PREACT.raf); draw(); };
@@ -13122,6 +13127,51 @@
         root.classList.toggle('fx-idle', !busy);
       }, 5000);
     })();
+
+
+    // ---------- 🐦 размер мема в реакциях питомца = размеру обычной картинки ----------
+    // Рамка непрозрачной фигуры (доли от размера картинки/холста)
+    function petFigBox(src, w, h) {
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const x = c.getContext('2d', { willReadFrequently: true });
+      x.drawImage(src, 0, 0, w, h);
+      const d = x.getImageData(0, 0, w, h).data;
+      let t = h, b = -1, l = w, r = -1;
+      for (let y = 0; y < h; y++) for (let i = 0; i < w; i++) {
+        if (d[(y * w + i) * 4 + 3] > 60) { if (y < t) t = y; if (y > b) b = y; if (i < l) l = i; if (i > r) r = i; }
+      }
+      if (b < 0) return null;
+      return { top: t / h, bottom: (b + 1) / h, left: l / w, right: (r + 1) / w };
+    }
+    // Где на экране стоит фигура до анимации: центр, низ, рост
+    function petFitMeasure(el) {
+      try {
+        const img = el.querySelector('img');
+        if (!img || !img.naturalWidth || !img.complete) return null;
+        const r = img.getBoundingClientRect();
+        if (!r.width || !r.height) return null;
+        const nw = img.naturalWidth, nh = img.naturalHeight;
+        const k = Math.min(r.width / nw, r.height / nh);           // object-fit: contain
+        const cw = nw * k, ch = nh * k, ox = r.left + (r.width - cw) / 2, oy = r.top + (r.height - ch) / 2;
+        const sw = Math.min(nw, 160), sh = Math.max(1, Math.round(nh * sw / nw));
+        const bb = petFigBox(img, sw, sh) || { top: 0, bottom: 1, left: 0, right: 1 };
+        return { cx: ox + (bb.left + bb.right) / 2 * cw, bottom: oy + bb.bottom * ch, h: (bb.bottom - bb.top) * ch };
+      } catch (e) { return null; }
+    }
+    // По кадру ролика на холсте: масштаб и сдвиг, чтобы фигура совпала с той, что была
+    function petFitApply(cv, f) {
+      try {
+        const bb = petFigBox(cv, 200, 142);
+        if (!bb || bb.bottom - bb.top < 0.1) return false;
+        const W = cv.width, H = cv.height;
+        const s = f.h / ((bb.bottom - bb.top) * H);
+        Object.assign(cv.style, { width: W * s + 'px', height: H * s + 'px', maxHeight: 'none', maxWidth: 'none', marginLeft: '0', transform: 'none' });
+        const cr = cv.getBoundingClientRect();
+        const fx = cr.left + (bb.left + bb.right) / 2 * W * s, fy = cr.top + bb.bottom * H * s;
+        cv.style.transform = `translate(${(f.cx - fx).toFixed(1)}px, ${(f.bottom - fy).toFixed(1)}px)`;
+        return true;
+      } catch (e) { return false; }
+    }
 
 
     // ===================== 🌐 ЯЗЫК =====================

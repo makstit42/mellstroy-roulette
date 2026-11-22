@@ -3896,11 +3896,20 @@
     /* монеты */
     .coin-layer { position: fixed; inset: 0; pointer-events: none; z-index: 3200; overflow: hidden; }
     .fly-coin { position: fixed; font-size: 1.3rem; line-height: 1; will-change: transform, opacity; opacity: 0; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.45)); }
-    .coin-bal { position: fixed; top: calc(var(--safe-top, 0px) + 10px); z-index: 3150; pointer-events: none;
-      transform: translateY(calc(-100% - var(--safe-top, 0px) - 24px)); transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1); }
-    .coin-bal.show { transform: none; }
-    .coin-bal .balance-box { box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55); }
-    html.glass .coin-bal .balance-box { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), 0 10px 28px rgba(0, 0, 0, 0.55); }
+    .coin-bal { position: fixed; top: calc(var(--safe-top, 0px) + 14px); z-index: 3150; pointer-events: none;
+      display: inline-flex; align-items: center; gap: 7px; height: 46px; padding: 0 8px 0 14px; border-radius: 23px;
+      background: linear-gradient(150deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04) 50%), rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(74, 222, 128, 0.55); color: var(--green, #4ade80); font-weight: 900; font-size: 1.08rem; white-space: nowrap;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 18px rgba(74, 222, 128, 0.25);
+      font-variant-numeric: tabular-nums; opacity: 0;
+      transform: translateY(calc(-100% - var(--safe-top, 0px) - 28px));
+      transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease; }
+    .coin-bal.show { transform: none; opacity: 1; }
+    .coin-bal .cb-ico { font-size: 1.15rem; }
+    .coin-bal .cb-plus { font-size: 0.8rem; color: #0f172a; background: #4ade80; border-radius: 999px; padding: 3px 8px; }
+    .coin-bal .cb-plus.bump { animation: cbBump 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    @keyframes cbBump { 40% { transform: scale(1.18); } }
+    .coin-bal.coin-hit { animation: coinHit 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
     .balance-box.coin-hit { animation: coinHit 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); border-color: #22c55e; }
     @keyframes coinHit { 0% { transform: scale(1); } 40% { transform: scale(1.07); } 100% { transform: scale(1); } }
     /* плашка достижения */
@@ -4624,7 +4633,7 @@
 
   <div class="ach-pop" id="achPop" aria-live="polite"></div>
   <div class="coin-layer" id="coinLayer" aria-hidden="true"></div>
-  <div class="coin-bal" id="coinBal" aria-hidden="true"><div class="balance-box"><span>💰</span><span class="bal-val" id="coinBalVal"></span></div></div>
+  <div class="coin-bal" id="coinBal" aria-hidden="true"><span class="cb-ico">💰</span><span class="cb-val" id="coinBalVal"></span><span class="cb-plus" id="coinBalPlus"></span></div>
 
   <div class="lang-pick" id="langPick" hidden>
     <div class="lang-box" data-noi18n>
@@ -12751,21 +12760,27 @@
     // Летят по плавной дуге прямо в 💰. Если баланс прокручен за экран или закрыт окном —
     // сверху выезжает мини-плашка баланса, монеты летят в неё, сумма растёт, плашка уезжает.
     let coinLast = 0;
-    const CB = { shown: 0, to: 0, hideT: 0, raf: 0 };
-    function coinBalShow(delta, box) {
+    // Плашка выезжает сверху по центру, копит «+сумму» при продаже подряд и уезжает через 0.5 с после последней монеты
+    const CB = { shown: 0, to: 0, plus: 0, hideT: 0, raf: 0, pending: 0 };
+    function coinBalShow(delta) {
       const wrap = document.getElementById('coinBal'), val = document.getElementById('coinBalVal');
       if (!wrap || !val) return null;
       const visible = wrap.classList.contains('show');
-      if (!visible) { CB.shown = state.balance - delta; val.textContent = fmtMoney(CB.shown); }
-      CB.to = state.balance;
       clearTimeout(CB.hideT);
-      wrap.style.left = Math.max(12, Math.round(box.getBoundingClientRect().left)) + 'px';
-      // меряем конечное положение плашки, затем плавно выдвигаем её
-      wrap.style.transition = 'none'; wrap.classList.add('show');
-      const r = wrap.querySelector('span').getBoundingClientRect();
-      if (!visible) { wrap.classList.remove('show'); void wrap.offsetWidth; }
-      wrap.style.transition = ''; wrap.classList.add('show');
-      return { x: r.left + r.width / 2, y: r.top + r.height / 2, box: wrap.firstElementChild };
+      if (!visible) {
+        CB.shown = state.balance - delta; CB.plus = 0;
+        val.textContent = fmtMoney(CB.shown);
+        wrap.style.left = Math.max(12, Math.round(window.innerWidth / 2 - 92)) + 'px';
+      }
+      CB.to = state.balance; CB.plus += delta;
+      const plus = document.getElementById('coinBalPlus');
+      plus.textContent = '+' + fmtMoney(CB.plus);
+      plus.classList.remove('bump'); void plus.offsetWidth; plus.classList.add('bump');
+      wrap.classList.add('show');
+      // куда лететь: конечное положение 💰 (без учёта сдвига, пока плашка выезжает)
+      const ico = wrap.firstElementChild, wr = wrap.getBoundingClientRect(), ir = ico.getBoundingClientRect();
+      const top = parseFloat(getComputedStyle(wrap).top) || 10, left = parseFloat(wrap.style.left) || 12;
+      return { x: left + (ir.left - wr.left) + ir.width / 2, y: top + (ir.top - wr.top) + ir.height / 2, box: wrap };
     }
     function coinBalCount() {
       const val = document.getElementById('coinBalVal');
@@ -12781,12 +12796,17 @@
     }
     function coinBalHide() {
       clearTimeout(CB.hideT);
-      CB.hideT = setTimeout(() => document.getElementById('coinBal').classList.remove('show'), 1100);
+      if (CB.pending > 0) return;
+      CB.hideT = setTimeout(() => { if (CB.pending <= 0) document.getElementById('coinBal').classList.remove('show'); }, 500);
     }
     function coinBurst(delta) {
       if (FX_REDUCED() || document.hidden) return;
       const now = Date.now();
-      if (now - coinLast < 150) return;
+      if (now - coinLast < 150) {
+        const cbw = document.getElementById('coinBal');
+        if (cbw && cbw.classList.contains('show')) { coinBalShow(delta); coinBalCount(); if (!CB.pending) coinBalHide(); }
+        return;
+      }
       const box = document.getElementById('balanceBox');
       const layer = document.getElementById('coinLayer');
       if (!box || !layer) return;
@@ -12801,8 +12821,9 @@
       }
       let hitBox = box, chip = null;
       if (!onScreen) {
-        chip = coinBalShow(delta, box);
+        chip = coinBalShow(delta);
         if (!chip) return;
+        CB.pending++;
         tx = chip.x; ty = chip.y; hitBox = chip.box;
       }
       const br = onScreen ? box.getBoundingClientRect() : { bottom: -999, right: -999 };
@@ -12846,7 +12867,7 @@
           if (i === 0 && chip) coinBalCount();
           if (i === n - 1) {
             hitBox.classList.remove('coin-hit'); void hitBox.offsetWidth; hitBox.classList.add('coin-hit'); setTimeout(() => hitBox.classList.remove('coin-hit'), 500);
-            if (chip) coinBalHide();
+            if (chip) { CB.pending = Math.max(0, CB.pending - 1); coinBalHide(); }
           }
           if (i % Math.max(2, Math.round(n / 5)) === 0) playTone(1180 + Math.random() * 300, 0.03, 'triangle', 0.025);
         };

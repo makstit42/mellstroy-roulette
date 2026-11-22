@@ -13703,7 +13703,7 @@
         wall(0, 0, 42, 1); wall(0, 29, 42, 1); wall(0, 0, 1, 30); wall(41, 0, 1, 30);
         wall(1, 9, 40, 1); wall(1, 19, 40, 1);
         wall(13, 1, 1, 8); wall(27, 1, 1, 8); wall(11, 10, 1, 9); wall(29, 10, 1, 9); wall(13, 20, 1, 9); wall(27, 20, 1, 9);
-        gap(5, 9, 3, 1); gap(18, 9, 5, 1); gap(32, 9, 3, 1); gap(11, 13, 1, 3); gap(29, 13, 1, 3); gap(5, 19, 3, 1); gap(16, 19, 9, 1); gap(32, 19, 3, 1);
+        gap(8, 9, 3, 1); gap(18, 9, 5, 1); gap(32, 9, 3, 1); gap(11, 13, 1, 3); gap(29, 13, 1, 3); gap(5, 19, 3, 1); gap(16, 19, 9, 1); gap(32, 19, 3, 1);
         gap(18, 29, 5, 1); fill(18, 29, 5, 1, G.CONC);
         fill(1, 1, 12, 8, G.MAT); fill(14, 1, 13, 8, G.CARPET); fill(28, 1, 13, 8, G.WOOD);
         fill(1, 10, 10, 9, G.BTILE); fill(30, 10, 11, 9, G.CONC);
@@ -16454,7 +16454,7 @@
         { id: 'balloons', ico: '🎈', t: 'Сбей {n} шариков', n: [6, 12, 20], k: 'balloons', r: [1000, 2000, 3500] }
       ];
       const HZ = [
-        { id: 'gym', ico: '🏋️', name: 'Качалка', r: [1, 1, 13, 9], door: [6.5, 9] },
+        { id: 'gym', ico: '🏋️', name: 'Качалка', r: [1, 1, 13, 9], door: [9.5, 9] },
         { id: 'hq', ico: '📋', name: 'Штаб', r: [14, 1, 27, 9], door: [20.5, 9] },
         { id: 'shop', ico: '🔫', name: 'Оружейная', r: [28, 1, 41, 9], door: [33.5, 9] },
         { id: 'hammam', ico: '♨️', name: 'Хаммам', r: [1, 10, 11, 19], door: [11, 14.5] },
@@ -16890,6 +16890,15 @@
         const tx = (20.5 + HUBO.x) * T, ty = (27 + HUBO.y) * T;
         if (inView(tx, ty, 120, v)) { for (let k = 0; k < 3; k++) { const f = (IP.t * 0.8 + k / 3) % 1; c.fillStyle = `rgba(96,165,250,${(0.55 * (1 - f)).toFixed(3)})`; c.fillRect(tx - 40 + f * 6, ty + 14 + f * 60, 80 - f * 12, 3); } }
       }
+      // табличка: значок в своём окошке фиксированной ширины, рамка считается только по тексту — эмодзи не вылезают
+      function hubPill(c, x, y, ico, txt, font, bg, stroke, col) {
+        c.font = font; const tw = c.measureText(txt).width, iw = ico ? 18 : 0, w = tw + iw + 20, x0 = Math.round(x - w / 2);
+        c.fillStyle = bg; rr(c, x0, y - 11, w, 22, 9); c.fill();
+        if (stroke) { c.strokeStyle = stroke; c.lineWidth = 1.6; rr(c, x0, y - 11, w, 22, 9); c.stroke(); }
+        c.textBaseline = 'middle';
+        if (ico) { c.save(); c.beginPath(); c.rect(x0 + 6, y - 10, iw, 20); c.clip(); c.font = '13px serif'; c.textAlign = 'center'; c.fillText(ico, x0 + 6 + iw / 2, y + 1); c.restore(); c.font = font; }
+        c.textAlign = 'left'; c.fillStyle = col; c.fillText(txt, x0 + 10 + iw, y + 1); c.textAlign = 'center';
+      }
       function hubDrawSky(c, v) {
         const st = hubData(), P = IP.P;
         // неоновые вывески над дверями
@@ -16898,11 +16907,7 @@
           if (!z.door) continue;
           const x = (z.door[0] + HUBO.x) * T + (z.id === 'hammam' ? -T * 0.55 : z.id === 'range' ? T * 0.55 : 0), y = (z.door[1] + HUBO.y) * T - (z.id === 'hammam' || z.id === 'range' ? 46 : 6);
           if (!inView(x, y, 90, v)) continue;
-          const fl = 0.75 + Math.sin(IP.t * 7 + x) * 0.08 + (Math.sin(IP.t * 23 + x * 3) > 0.97 ? -0.4 : 0), txt = z.ico + ' ' + tr(z.name).toUpperCase();
-          c.font = '900 12px system-ui, sans-serif'; const tw = c.measureText(txt).width + 18;
-          c.fillStyle = 'rgba(8,12,22,0.72)'; rr(c, x - tw / 2, y - 11, tw, 22, 8); c.fill();
-          c.strokeStyle = z.id === 'tunnel' ? `rgba(96,165,250,${fl})` : `rgba(236,72,153,${fl})`; c.lineWidth = 1.6; rr(c, x - tw / 2, y - 11, tw, 22, 8); c.stroke();
-          c.fillStyle = `rgba(255,240,250,${Math.min(1, fl + 0.15)})`; c.fillText(txt, x, y + 1);
+          hubPill(c, x, y, z.ico, tr(z.name).toUpperCase(), '900 12px system-ui, sans-serif', 'rgba(8,12,22,0.78)', z.id === 'tunnel' ? 'rgba(96,165,250,0.9)' : 'rgba(236,72,153,0.9)', '#fff0fa');
         }
         // кубки в зале славы
         for (const p of M.props) {
@@ -16920,8 +16925,7 @@
           else if (s.kind === 'trophy') { const D = TROPHY[s.tid]; txt = `${D.ico} ${tr(D.name)}: ${D.v(st)}`; }
           else if (s.kind === 'range') txt = `${tr('Тир')} · 🏆 ${tr('рекорд')} ${st.tir || 0}` + (IP.range ? ` · ⏱ ${Math.ceil(IP.range.t)}` : '');
           else txt = tr(s.name);
-          c.font = '800 12px system-ui, sans-serif'; const tw = c.measureText(txt).width + 16, by = s.y - (s.kind === 'trophy' ? 52 : 40);
-          c.fillStyle = 'rgba(255,255,255,0.94)'; rr(c, s.x - tw / 2, by - 11, tw, 22, 10); c.fill(); c.fillStyle = '#0f172a'; c.fillText(txt, s.x, by + 1);
+          hubPill(c, s.x, s.y - (s.kind === 'trophy' ? 52 : 40), '', txt, '800 12px system-ui, sans-serif', 'rgba(255,255,255,0.95)', null, '#0f172a');
         }
         if (P.relaxT > 0) { c.strokeStyle = '#67e8f9'; c.lineWidth = 5; c.beginPath(); c.arc(P.x, P.y - 70, 14, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - P.relaxT / 3)); c.stroke(); }
       }
@@ -17359,7 +17363,7 @@
         c.restore();
         if (live) { c.font = '15px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.globalAlpha = 0.7 + Math.sin(IP.t * 10) * 0.3; c.fillText('🔊', n.x + w * 0.45, n.y - h - 2); c.globalAlpha = 1; }
         if (n.swim) { c.strokeStyle = 'rgba(255,255,255,0.55)'; c.lineWidth = 1.5; for (let r = 0; r < 2; r++) { const rr0 = 10 + ((t * 9 + r * 9) % 18); c.globalAlpha = 1 - rr0 / 28; c.beginPath(); c.ellipse(n.x, n.y - 2, rr0 * 1.4, rr0 * 0.45, 0, 0, 7); c.stroke(); } c.globalAlpha = 1; }
-        if (n.say) { c.font = '800 11px system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; const tw = c.measureText(n.say).width + 14, by = n.y - h - 16; c.fillStyle = 'rgba(255,255,255,0.92)'; rr(c, n.x - tw / 2, by - 10, tw, 20, 9); c.fill(); c.fillStyle = '#0f172a'; c.fillText(n.say, n.x, by); }
+        if (n.say) { c.font = '800 11px system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; const tw = c.measureText(n.say).width + 14 + (/\p{Extended_Pictographic}/u.test(n.say) ? 10 : 0), by = n.y - h - 16; c.fillStyle = 'rgba(255,255,255,0.92)'; rr(c, n.x - tw / 2, by - 10, tw, 20, 9); c.fill(); c.fillStyle = '#0f172a'; c.fillText(n.say, n.x, by); }
         if (n.esc) { let hs = ''; for (let k = 0; k < n.hpMax; k++) hs += k < n.hp ? '❤️' : '🖤'; c.font = '10px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(hs, n.x, n.y - h - (n.say ? 34 : 7)); }
       }
       function resize() {

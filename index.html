@@ -14275,7 +14275,7 @@
             if (!HMS.on || HMS.src) return;
             const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; s.connect(HMS.gain);
             const off = HMS.off % buf.duration; s.start(0, off); HMS.startT = ctx.currentTime - off; HMS.src = s;
-            HMS.gain.gain.cancelScheduledValues(ctx.currentTime); HMS.gain.gain.setValueAtTime(0.0001, ctx.currentTime); HMS.gain.gain.setTargetAtTime(vol, ctx.currentTime, 0.5);
+            HMS.gain.gain.cancelScheduledValues(ctx.currentTime); HMS.gain.gain.setValueAtTime(0.0001, ctx.currentTime); HMS.gain.gain.setTargetAtTime(NV.duck ? vol * 0.25 : vol, ctx.currentTime, 0.5);   // мемы уже говорят — песня тише
           };
           if (HMS.buf) start(HMS.buf);
           else if (!HMS.loading) { HMS.loading = true; bgmDecode(hmSongIdx()).then(b => { HMS.buf = b; HMS.loading = false; start(b); }).catch(() => { HMS.loading = false; }); }
@@ -14847,86 +14847,138 @@
         n.rob = 1; n.robPlayed = 0; n.src = 'media/ip/robber.mp4'; n.img = A.robImg; n.crop = A.robCrop; n.name = '';
         for (let k = 0; k < 18; k++) part({ t: 'steam', x: n.x + rnd(-24, 24), y: n.y - rnd(0, 46), vx: rnd(-30, 30), vy: rnd(-40, -10), life: rnd(0.4, 0.8), max: 0.8, s: rnd(8, 16) });
         n.say = tr(pick(ROLE_SAY.rob)); n.sayT = 2.4;
-        if (NV.n && NV.n !== n) npcStop(false);
       }
       function robEnd() {
         const n = robTeller(); if (!n || !n.rob) return;
-        if (NV.n === n) npcStop(false);
+        if (n.nv) nvEnd(n.nv, false);
         Object.assign(n, n.orig); n.rob = 0; n.src = null; n.orig = null;
       }
-      const NV = { v: null, cv: null, ctx: null, n: null, gain: null, cd: 0.4, t: 0, scanT: 0, vol: -1 };
-      function npcVideo() {
-        if (NV.v) return NV.v;
+      // ---------- мемы говорят, когда подходишь поближе: до трёх сразу ----------
+      // Картинка — из видео без звука (такое можно запускать на айфоне без касания), звук — из того же файла
+      // через Web Audio: у каждого мема своя громкость, ближе — громче.
+      const NV = { slots: [], max: 3, cd: 0.3, scanT: 0, aud: new Map(), duck: false, count: 0 };
+      const NV_ON = 4.2 * T, NV_OFF = 5.8 * T, NV_PRE = 7.5 * T;
+      function nvUrl(n) { return n.src || memeUrl(n.mid); }
+      // звук мема качаем и раскладываем заранее, в памяти держим последние 6
+      function nvAudio(url) {
+        let p = NV.aud.get(url);
+        if (p) { NV.aud.delete(url); NV.aud.set(url, p); return p; }
+        p = fetch(url).then(r => r.arrayBuffer()).then(ab => new Promise((ok, err) => getAudioCtx().decodeAudioData(ab, ok, err))).catch(() => null);
+        NV.aud.set(url, p);
+        while (NV.aud.size > 6) NV.aud.delete(NV.aud.keys().next().value);
+        return p;
+      }
+      function nvSlot() {
+        const s = { v: null, cv: mkCanvas(190, 130), ctx: null, n: null, src: null, g: null, buf: null, t: 0, t0: 0, off: 0, gen: 0, syncT: 0 };
+        s.ctx = s.cv.getContext('2d', { willReadFrequently: true });
         const v = document.createElement('video');
-        v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto';
+        v.playsInline = true; v.setAttribute('playsinline', ''); v.muted = true; v.defaultMuted = true; v.setAttribute('muted', ''); v.preload = 'auto';
         v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none;z-index:-1';
         document.body.appendChild(v);
-        NV.v = v; NV.cv = mkCanvas(380, 260); NV.ctx = NV.cv.getContext('2d', { willReadFrequently: true });
-        try { const ctx = getAudioCtx(), src = ctx.createMediaElementSource(v); NV.gain = ctx.createGain(); NV.gain.gain.value = 0.95; src.connect(NV.gain); NV.gain.connect(ctx.destination); } catch (e) {}
-        v.onended = () => npcStop(true);
-        return v;
+        v.onended = () => { if (s.n) nvEnd(s, true); };
+        s.v = v; NV.slots.push(s);
+        return s;
       }
       function hmSongDuck(on) {
         if (!HMS.gain || !HMS.src) return;
         try { const ctx = getAudioCtx(), vol = state.settings.music !== false ? Math.max(0.12, musicVolume()) : 0.16; HMS.gain.gain.cancelScheduledValues(ctx.currentTime); HMS.gain.gain.setTargetAtTime(on ? vol * 0.25 : vol, ctx.currentTime, 0.25); } catch (e) {}
       }
+      function nvGain(d) { const c = NV.count, mix = c <= 1 ? 1 : c === 2 ? 0.82 : 0.7; return 0.95 * mix * clamp(1.15 - d / (NV_OFF * 1.05), 0.28, 1); }
       function npcPlay(n) {
-        const v = npcVideo();
-        NV.n = n; NV.t = 0; NV.ctx._mf = null; NV.vol = -1;
+        const s = NV.slots.find(q => !q.n) || (NV.slots.length < NV.max ? nvSlot() : null);
+        if (!s) return false;
+        s.n = n; n.nv = s; s.t = 0; s.gen++; s.ctx._mf = null; s.buf = null; s.syncT = 0.5;
+        const v = s.v, gen = s.gen, url = nvUrl(n);
         if (n.src) { v.setAttribute('src', n.src); v.dataset.clip = '0'; } else setMemeSrc(v, n.mid);
-        v.muted = !soundEnabled;
+        v.muted = true;
         try { v.currentTime = 0; } catch (e) {}
-        npcVol(n.rob ? 0 : Math.hypot(n.x - IP.P.x, n.y - IP.P.y), true);
-        v.play().catch(() => { v.muted = true; v.play().catch(() => npcStop(true)); });
-        hmSongDuck(true);
+        v.play().catch(() => {});
+        if (soundEnabled) nvAudio(url).then(b => { if (s.gen === gen && b) s.buf = b; });
+        return true;
       }
-      // чем ближе подошёл к мему, тем громче он говорит
-      function npcVol(d, now) {
-        if (!NV.gain) return;
-        const v = 0.95 * clamp(1.15 - d / (NV_OFF * 1.1), 0.35, 1);
-        if (!now && Math.abs(NV.vol - v) < 0.03) return;
-        NV.vol = v;
-        try { const t = getAudioCtx().currentTime; if (now) { NV.gain.gain.cancelScheduledValues(t); NV.gain.gain.setValueAtTime(v, t); } else NV.gain.gain.setTargetAtTime(v, t, 0.12); } catch (e) {}
+      // звук включаем, когда видео реально пошло — с того же места, чтобы губы совпадали
+      function nvTick(s, dt, d) {
+        s.t += dt;
+        const v = s.v;
+        if (!s.src && s.buf && soundEnabled && v.readyState >= 2 && !v.paused && v.currentTime > 0) {
+          try {
+            const ctx = getAudioCtx(), src = ctx.createBufferSource(), g = ctx.createGain();
+            src.buffer = s.buf; g.gain.value = nvGain(d); src.connect(g); g.connect(ctx.destination);
+            s.off = Math.min(v.currentTime, Math.max(0, s.buf.duration - 0.05)); s.t0 = ctx.currentTime; src.start(0, s.off);
+            src.onended = () => { if (s.src === src && s.n) nvEnd(s, true); };
+            s.src = src; s.g = g;
+          } catch (e) {}
+        }
+        if (s.g) {
+          const gv = nvGain(d);
+          if (Math.abs((s.gv || 0) - gv) > 0.03) { s.gv = gv; try { s.g.gain.setTargetAtTime(gv, getAudioCtx().currentTime, 0.12); } catch (e) {} }
+          // видео подвисло и отстало от звука — догоняем
+          s.syncT -= dt;
+          if (s.syncT <= 0) { s.syncT = 1; try { const pos = getAudioCtx().currentTime - s.t0 + s.off; if (pos < (v.duration || 1e9) - 0.1 && Math.abs(v.currentTime - pos) > 0.3) v.currentTime = pos; } catch (e) {} }
+        }
       }
-      function npcStop(done) {
-        if (NV.n && done) NV.n.heard = 1;
-        NV.n = null;
-        if (NV.v) { try { NV.v.pause(); } catch (e) {} }
-        NV.cd = done ? 0.8 : 0.25;
-        hmSongDuck(false);
+      function nvEnd(s, done) {
+        const n = s.n; if (!n) return;
+        if (done) n.heard = 1;
+        n.nv = null; s.n = null; s.gen++; s.buf = null;
+        try { s.v.pause(); } catch (e) {}
+        if (s.src) {
+          const src = s.src, g = s.g; s.src = null; s.g = null; s.gv = 0;
+          try { const t = getAudioCtx().currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.linearRampToValueAtTime(0.0001, t + 0.12); src.stop(t + 0.14); } catch (e) {}
+        }
+        NV.cd = Math.max(NV.cd, done ? 0.5 : 0.15);
       }
-      // мем включается, когда подходишь к нему поближе (в том же доме или на той же улице, без стены между вами),
-      // и замолкает, когда отходишь. Дослушал до конца — снова заговорит, только если отойти и вернуться.
-      const NV_ON = 3.6 * T, NV_OFF = 5.2 * T;
+      function npcStop() { for (const s of NV.slots) nvEnd(s, false); if (NV.duck) { NV.duck = false; hmSongDuck(false); } NV.count = 0; }
+      // выход из игры: отпускаем видео и звук из памяти
+      function npcRelease() { npcStop(); for (const s of NV.slots) { try { s.v.removeAttribute('src'); s.v.load(); } catch (e) {} } NV.aud.clear(); }
+      // мем включается, если ты в том же доме (или оба на улице) и между вами нет стены
       function npcSees(n) {
         const P = IP.P, x0 = P.x, y0 = P.y - 16, dx = n.x - x0, dy = n.y - 16 - y0, k = Math.ceil(Math.hypot(dx, dy) / 12);
         for (let i = 1; i < k; i++) { const tx = Math.floor((x0 + dx * i / k) / T), ty = Math.floor((y0 + dy * i / k) / T); if (tx >= 0 && ty >= 0 && tx < MW && ty < MH && M.s[idx(tx, ty)] === S_WALL) return false; }
         return true;
       }
-      function nearMeme() {
-        const P = IP.P; let best = null, bd = NV_ON * NV_ON;
-        for (const n of A.npc) { if (!n.img || n.heard || n.b !== IP.inB) continue; const d2 = dist2(n.x, n.y, P.x, P.y); if (d2 < bd && npcSees(n)) { bd = d2; best = n; } }
-        return best;
-      }
+      function nvFarthest() { const P = IP.P; let far = null, fd = -1; for (const s of NV.slots) if (s.n && !s.n.rob) { const q = dist2(s.n.x, s.n.y, P.x, P.y); if (q > fd) { fd = q; far = s; } } return [far, fd]; }
       function updateNpcVideo(dt) {
         const P = IP.P, b = IP.inB, rt = robTeller();
         if (rt && rt.rob) {
-          if (b !== 2 && NV.n !== rt) robEnd();
-          else if (!rt.robPlayed && !P.dead) { rt.robPlayed = 1; rt.heard = 0; if (NV.n) npcStop(false); npcPlay(rt); return; }
+          if (b !== 2 && !rt.nv) robEnd();
+          else if (!rt.robPlayed && !P.dead) {
+            rt.robPlayed = 1; rt.heard = 0; if (rt.nv) nvEnd(rt.nv, false);
+            if (!npcPlay(rt)) { const [far] = nvFarthest(); if (far) { nvEnd(far, false); npcPlay(rt); } }
+          }
         }
         NV.scanT -= dt; const scan = NV.scanT <= 0; if (scan) NV.scanT = 0.15;
         if (scan) for (const n of A.npc) if (n.heard && (n.b !== b || dist2(n.x, n.y, P.x, P.y) > NV_OFF * NV_OFF)) n.heard = 0;
-        if (NV.n) {
-          const n = NV.n, d2 = dist2(n.x, n.y, P.x, P.y);
-          if (P.dead || n.b !== b || (!n.rob && d2 > NV_OFF * NV_OFF)) { npcStop(false); return; }
-          NV.t += dt; if (NV.t > 14) { npcStop(true); return; }
-          npcVol(n.rob ? 0 : Math.sqrt(d2));
-          // подошёл к другому мему заметно ближе — говорит он
-          if (scan && !n.rob) { const c = nearMeme(); if (c && c !== n && !c.walker && dist2(c.x, c.y, P.x, P.y) < d2 * 0.3) { npcStop(false); npcPlay(c); } }   // прохожий мимо не перебивает
-          return;
+        // кто уже говорит: громкость по расстоянию; отошёл далеко — замолкает
+        let cnt = 0; for (const s of NV.slots) if (s.n) cnt++; NV.count = cnt;
+        for (const s of NV.slots) {
+          const n = s.n; if (!n) continue;
+          const d2 = dist2(n.x, n.y, P.x, P.y);
+          if (P.dead || n.b !== b || (!n.rob && d2 > NV_OFF * NV_OFF)) { nvEnd(s, false); continue; }
+          if (s.t > 16 || (s.t > 2.5 && !(s.v.currentTime > 0))) { nvEnd(s, true); continue; }
+          nvTick(s, dt, n.rob ? 0 : Math.sqrt(d2));
         }
-        NV.cd -= dt; if (NV.cd > 0 || P.dead || !scan) return;
-        const c = nearMeme(); if (c) npcPlay(c);
+        const any = NV.slots.some(s => s.n);
+        if (any !== NV.duck) { NV.duck = any; hmSongDuck(any); }
+        NV.cd -= dt;
+        if (!scan || P.dead) return;
+        // кто рядом: звук ближайших качаем заранее, а тех, кто совсем близко, включаем
+        const pre = [], cand = [];
+        for (const n of A.npc) {
+          if (!n.img || n.nv || n.heard || n.b !== b) continue;
+          const d2 = dist2(n.x, n.y, P.x, P.y);
+          if (d2 < NV_PRE * NV_PRE) pre.push([d2, n]);
+          if (d2 < NV_ON * NV_ON && npcSees(n)) cand.push([d2, n]);
+        }
+        if (soundEnabled && pre.length) { pre.sort((p, q) => p[0] - q[0]); for (let i = 0; i < Math.min(3, pre.length); i++) nvAudio(nvUrl(pre[i][1])); }
+        if (!cand.length || NV.cd > 0) return;
+        cand.sort((p, q) => p[0] - q[0]);
+        const [d2, c] = cand[0];
+        if (npcPlay(c)) { NV.cd = 0.35; return; }
+        // все трое заняты: если подошёл к мему заметно ближе, чем к самому дальнему из говорящих, — он сменяет его
+        if (c.walker) return;
+        const [far, fd] = nvFarthest();
+        if (far && d2 < fd * 0.3) { nvEnd(far, false); npcPlay(c); NV.cd = 0.35; }
       }
       function updateNpcs(dt) {
         updateNpcVideo(dt);
@@ -15932,11 +15984,11 @@
         if ((n.walker || n.esc) && n.moving) { sway = Math.sin(n.walk) * 0.08; bob = Math.abs(Math.sin(n.walk)) * 3; }
         if (n.role === 'ball') bob = Math.abs(Math.sin(t * 4)) * 5;
         if (!n.swim) { c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(n.x, n.y, w * 0.32, 5, 0, 0, 7); c.fill(); }
-        const live = NV.n === n && NV.v && NV.v.readyState >= 2;
+        const sl = n.nv, live = sl && sl.v.readyState >= 2 && sl.v.currentTime > 0;
         c.save(); c.translate(n.x, n.y); if (n.face < 0) c.scale(-1, 1);
         if (n.swim) { c.beginPath(); c.rect(-w, -h - 10, w * 2, h + 8); c.clip(); }
         c.rotate(sway);
-        if (live) { memeDrawFrame(NV.ctx, NV.v); c.drawImage(NV.cv, -w / 2 - cr.x * k, -h + bob + (n.swim ? h * 0.32 : 0) - cr.y * k, NV.cv.width * k, NV.cv.height * k); }
+        if (live) { memeDrawFrame(sl.ctx, sl.v); c.drawImage(sl.cv, -w / 2 - cr.x * k, -h + bob + (n.swim ? h * 0.32 : 0) - cr.y * k, (n.img.naturalWidth || 380) * k, (n.img.naturalHeight || 260) * k); }
         else c.drawImage(n.img, cr.x, cr.y, cr.w, cr.h, -w / 2, -h + bob + (n.swim ? h * 0.32 : 0), w, h);
         c.restore();
         if (live) { c.font = '15px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.globalAlpha = 0.7 + Math.sin(IP.t * 10) * 0.3; c.fillText('🔊', n.x + w * 0.45, n.y - h - 2); c.globalAlpha = 1; }
@@ -16044,7 +16096,7 @@
         kick(); haptic('light');
       };
       function closeGame() {
-        hmSong(false); npcStop(false); robEnd(); evReset();
+        hmSong(false); npcRelease(); robEnd(); evReset();
         IP.on = false; IP.mode = 'menu'; if (IP.raf) cancelAnimationFrame(IP.raf); IP.raf = 0;
         $('ipGame').hidden = true; document.documentElement.classList.remove('ip-open');
         try { syncTelegramChrome(); } catch (e) {}

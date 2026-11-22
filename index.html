@@ -7435,7 +7435,7 @@
 
     function applyMusicVolume() {
       if (!music.gain || !audioCtx) return;
-      const target = musicVolume() * (bgm.duck.size ? 0.2 : 1);
+      const target = bgm.duck.has('iphm') ? 0 : musicVolume() * (bgm.duck.size ? 0.2 : 1);
       music.gain.gain.cancelScheduledValues(audioCtx.currentTime);
       music.gain.gain.setTargetAtTime(music.on ? target : 0, audioCtx.currentTime, 0.25);
     }
@@ -14175,6 +14175,31 @@
           o.connect(g); g.connect(ctx.destination); o.start(t0); o.stop(t0 + dur + 0.05);
         } catch (e) {}
       }
+      // ---------- в хаммаме играет «Прогрей хаммам» (фоновая музыка затихает) ----------
+      const HMS = { buf: null, src: null, gain: null, loading: false, off: 0, startT: 0, on: false };
+      function hmSongIdx() { try { const i = MUSIC_NAMES.indexOf('Прогрей хаммам'); return i >= 0 ? i : 1; } catch (e) { return 1; } }
+      function hmSong(want) {
+        if (want === HMS.on) return;
+        HMS.on = want;
+        let ctx; try { ctx = getAudioCtx(); } catch (e) { return; }
+        if (want) {
+          if (!soundEnabled && state.settings.music === false) return;
+          musicDuck('iphm', true);
+          if (!HMS.gain) { HMS.gain = ctx.createGain(); HMS.gain.gain.value = 0; HMS.gain.connect(ctx.destination); }
+          const vol = state.settings.music !== false ? Math.max(0.12, musicVolume()) : 0.16;
+          const start = (buf) => {
+            if (!HMS.on || HMS.src) return;
+            const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; s.connect(HMS.gain);
+            const off = HMS.off % buf.duration; s.start(0, off); HMS.startT = ctx.currentTime - off; HMS.src = s;
+            HMS.gain.gain.cancelScheduledValues(ctx.currentTime); HMS.gain.gain.setValueAtTime(0.0001, ctx.currentTime); HMS.gain.gain.setTargetAtTime(vol, ctx.currentTime, 0.5);
+          };
+          if (HMS.buf) start(HMS.buf);
+          else if (!HMS.loading) { HMS.loading = true; bgmDecode(hmSongIdx()).then(b => { HMS.buf = b; HMS.loading = false; start(b); }).catch(() => { HMS.loading = false; }); }
+        } else {
+          musicDuck('iphm', false);
+          if (HMS.src) { const s = HMS.src; HMS.src = null; HMS.off = ctx.currentTime - HMS.startT; HMS.gain.gain.cancelScheduledValues(ctx.currentTime); HMS.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.35); setTimeout(() => { try { s.stop(); } catch (e) {} }, 1600); }
+        }
+      }
       function petOuch() {
         const P = IP.P; if (P.hurtSndT > 0) return; P.hurtSndT = 1.1;
         if (A.petAudio && soundEnabled) {
@@ -14716,6 +14741,8 @@
         const b = bldAt(P.x, P.y);
         if (b !== IP.inB) { IP.inB = b; IP.inBT = 0; if (b >= 0) { const B = M.B[b]; showPlace(B.ico + ' ' + tr(B.name)); } }
         for (const B of M.B) B.roofA = lerp(B.roofA, B.id === IP.inB ? 0 : 1, Math.min(1, dt * 7));
+        // зона хаммама (здание и чуть вокруг): играет «Прогрей хаммам»
+        { const H = M.B[3]; hmSong(!P.dead && P.x > (H.x - 1.5) * T && P.x < (H.x + H.w + 1.5) * T && P.y > (H.y - 1.5) * T && P.y < (H.y + H.h + 1.5) * T); }
         // хаммам: пар клубится, посетители переговариваются (только когда игрок рядом)
         if (A.npc && Math.hypot(P.x - 60 * T, P.y - 26 * T) < 12 * T) {
           if (Math.random() < dt * 9) part({ t: 'steam', x: rnd(56.5, 63.5) * T, y: rnd(22, 29.5) * T, vx: rnd(-8, 8), vy: rnd(-26, -10), life: rnd(1.2, 2.2), max: 2.2, s: rnd(10, 22) });
@@ -14983,7 +15010,7 @@
         if (src === 'wave') startWave();
         kick();
       };
-      function pause() { if (IP.mode !== 'play' || IP.paused) return; IP.paused = true; IP.joy = null; IP.input.x = IP.input.y = 0; $('ipPauseInfo').innerHTML = runSummaryHTML(); screen('ipPauseScr'); }
+      function pause() { if (IP.mode !== 'play' || IP.paused) return; hmSong(false); IP.paused = true; IP.joy = null; IP.input.x = IP.input.y = 0; $('ipPauseInfo').innerHTML = runSummaryHTML(); screen('ipPauseScr'); }
       window.ipResume = function() { if (IP.pickSrc) { screen('ipPick'); return; } IP.paused = false; IP.last = performance.now(); screen(''); kick(); };
       window.ipExitRun = function() { const r = finishRun(); closeGame(); if (r && (r.money || r.xp)) setTimeout(() => showToast(`🚔 ${tr('Забег окончен')}: +${fmtMoney(r.money)} · +${r.xpShown} XP`), 400); };
       function runSummaryHTML() {
@@ -15005,6 +15032,7 @@
         return { money, xp, xpShown: Math.round(xpArg * 2.5) };
       }
       function gameOver() {
+        hmSong(false);
         IP.mode = 'over'; IP.timeScale = 1;
         const r = IP.run, res = finishRun() || { money: 0, xpShown: 0 };
         $('ipOverTitle').textContent = r.record && r.waves > 0 ? '🏆 ' + tr('Новый рекорд!') : '🚔 ' + tr('Тебя поймал Интерпол!');
@@ -15154,6 +15182,7 @@
         kick(); haptic('light');
       };
       function closeGame() {
+        hmSong(false);
         IP.on = false; IP.mode = 'menu'; if (IP.raf) cancelAnimationFrame(IP.raf); IP.raf = 0;
         $('ipGame').hidden = true; document.documentElement.classList.remove('ip-open');
         try { syncTelegramChrome(); } catch (e) {}
@@ -15217,7 +15246,7 @@
       window.renderIpCard = renderIpCard;
       setTimeout(renderIpCard, 600);
       // для проверок
-      window.IPG = { IP, M, R, A, ETYPES, UPG, spawnEnemy, step, applyUpg, startWave, fightWave, explodeBarrel, useSpot, buildFlow, los, draw, hud, resize, banner, gameOver, finishRun, T, getChunk, CPX, CHUNK, MW, MH, FLOW, flowDir, buildSprites, spotReady, kick, dash, openPick };
+      window.IPG = { HMS, IP, M, R, A, ETYPES, UPG, spawnEnemy, step, applyUpg, startWave, fightWave, explodeBarrel, useSpot, buildFlow, los, draw, hud, resize, banner, gameOver, finishRun, T, getChunk, CPX, CHUNK, MW, MH, FLOW, flowDir, buildSprites, spotReady, kick, dash, openPick };
 
     })();
     // ===== /🚔 конец игры =====

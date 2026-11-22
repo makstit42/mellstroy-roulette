@@ -3930,6 +3930,36 @@
     .ap-txt span { font-size: 0.74rem; color: #d6d3d1; font-weight: 700; }
     @media (prefers-reduced-motion: reduce) { .ach-pop { transition: none; } .ripple, .fly-coin { display: none; } }
 
+    /* ===== ⚡ Производительность ===== */
+    /* закрытые окна не рисуются (раньше были просто прозрачными, а стекло под ними всё равно считалось) */
+    .modal-overlay { visibility: hidden; transition: opacity 0.25s ease, visibility 0s linear 0.25s; }
+    .modal-overlay.open { visibility: visible; transition: opacity 0.25s ease, visibility 0s linear 0s; }
+    .modal-overlay:not(.open) *, .modal-overlay:not(.open) *::before, .modal-overlay:not(.open) *::after { animation-play-state: paused !important; }
+    /* под открытым окном и после минуты без касаний фон и страница замирают */
+    html.fx-sheet .bg-fx, html.fx-sheet .bg-fx *, html.fx-sheet .app *, html.fx-sheet .app *::before, html.fx-sheet .app *::after,
+    html.fx-sheet .bottom-nav *, html.fx-idle .bg-fx, html.fx-idle .bg-fx *, html.fx-idle .app *, html.fx-idle .app *::before,
+    html.fx-idle .app *::after, html.fx-idle .bottom-nav * { animation-play-state: paused !important; }
+    /* слой частиц — только пока летят частицы */
+    #fxCanvas { visibility: hidden; }
+    /* блик по кнопке крутки: двигаем transform, а не left (не перерисовываем кнопку каждый кадр) */
+    .spin-btn::after { will-change: transform; }
+    @keyframes btnGlint { 0% { transform: translateX(0) skewX(-20deg); } 35%, 100% { transform: translateX(385.71%) skewX(-20deg); } }
+    /* точка «колесо готово»: пульс-кольцо двигает видеокарта (раньше — тень, перерисовка каждый кадр) */
+    .wheel-open-btn { isolation: isolate; }
+    .tab-dot { animation: none !important; }
+    .tab-dot.visible::before { content: ''; position: absolute; inset: -2px; border-radius: 50%; background: rgba(245, 158, 11, 0.55);
+      z-index: -1; pointer-events: none; animation: dotRing 1.5s infinite; }
+    @keyframes dotRing { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(2.8); opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .tab-dot.visible::before { animation: none; opacity: 0; } }
+    /* фон «Мытищи»: фото плывёт через transform (раньше двигалась картинка фона — весь экран перерисовывался каждый кадр) */
+    .bg-fx.fancy .bg-grad.bg-photo:not(.bg-photo-cover) {
+      right: auto; width: max(100vw, 178.2vh);
+      background: linear-gradient(rgba(2, 12, 30, 0.32), rgba(2, 12, 30, 0.32)), var(--bg-image) 0 50% / 100% auto no-repeat, #0c4a6e;
+      animation: bgPhotoPanT 50s ease-in-out infinite alternate;
+    }
+    @keyframes bgPhotoPanT { from { transform: translateX(0); } to { transform: translateX(calc(100vw - 100%)); } }
+    .bg-fx.still .bg-grad.bg-photo { animation: none !important; }
+
     /* Выбор языка */
     .lang-pick { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; padding: 24px;
       background: rgba(2, 6, 23, 0.86); backdrop-filter: blur(8px); }
@@ -5342,7 +5372,7 @@
       const meta = await cloudMeta();
       if (cloudNewer(meta)) await cloudAdopt(meta);
     }
-    setInterval(cloudCheck, 20000);
+    setInterval(cloudCheck, 45000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(cloudCheck, 300); });
     window.addEventListener('focus', () => setTimeout(cloudCheck, 300));
 
@@ -5659,6 +5689,7 @@
       }
       if (!fxRunning) {
         fxRunning = true;
+        fxCanvas.style.visibility = 'visible';
         requestAnimationFrame(tickParticles);
       }
     }
@@ -5700,7 +5731,7 @@
       }
 
       if (particles.length > 0) requestAnimationFrame(tickParticles);
-      else fxRunning = false;
+      else { fxRunning = false; fxCanvas.style.visibility = 'hidden'; }
     }
 
     // === ПЛАВНЫЙ СЧЁТЧИК БАЛАНСА ===
@@ -6609,11 +6640,27 @@
     }
 
     // Рисуем кадр «по низу» и вырезаем зелёный фон
+    // Номер кадра видео: рисуем, только когда кадр сменился (видео 24 к/с, экран 60–120 Гц)
+    function memeFrameKey(v) {
+      if (typeof v.requestVideoFrameCallback === 'function' && !v._vfOn) {
+        v._vfOn = true; v._vf = 0; v._vfT = 0;
+        const tick = () => { v._vf++; v._vfT = performance.now(); try { v.requestVideoFrameCallback(tick); } catch (e) {} };
+        try { v.requestVideoFrameCallback(tick); } catch (e) {}
+      }
+      const t = Math.round(v.currentTime * 1000);
+      // колбэки кадров работают — по ним; если вдруг молчат (видео скрыто и т.п.) — по времени, не чаще 30 раз/с
+      if (v._vf > 0 && (v.paused || performance.now() - v._vfT < 250)) return 'f' + v._vf + (v.paused ? ':' + t : '');
+      return 't' + Math.round(v.currentTime * 30);
+    }
     function memeDrawFrame(ctx, v, cover = false) {
       const W = ctx.canvas.width, H = ctx.canvas.height;
       const vw = v.videoWidth, vh = v.videoHeight;
+      if (!vw || !vh) { ctx.clearRect(0, 0, W, H); return; }
+      const fk = memeFrameKey(v);
+      const st = ctx._mf || (ctx._mf = {});
+      if (st.v === v && st.k === fk && st.W === W && st.H === H && st.c === cover && st.src === v.currentSrc) return;
+      Object.assign(st, { v, k: fk, W, H, c: cover, src: v.currentSrc });
       ctx.clearRect(0, 0, W, H);
-      if (!vw || !vh) return;
       if (v.dataset && v.dataset.clip === '1') {
         const kc = cover ? Math.max(W / vw, H / vh) : Math.min(W / vw, H / vh);
         const cw = Math.round(vw * kc), ch = Math.round(vh * kc);
@@ -6847,7 +6894,7 @@
       viewer.style.setProperty('--mc', r.color);
       viewer.style.setProperty('--mcs', r.color + '66');
       const canvas = document.getElementById('memeViewerCanvas');
-      canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+      { const c2 = canvas.getContext('2d'); c2.clearRect(0, 0, canvas.width, canvas.height); c2._mf = null; }
       document.getElementById('memeModal').classList.add('open');
       MEME_MODAL.itemId = String(p.id);
       renderBananaRow();
@@ -9738,20 +9785,20 @@
       btn.classList.toggle('waiting', !available);
 
       if (isWheelSpinning) {
-        label.textContent = 'Колесо крутится';
-        timer.textContent = '🎡 . . .';
+        setTxt(label, 'Колесо крутится');
+        setTxt(timer, '🎡 . . .');
       } else if (hasInfiniteWheel()) {
-        label.textContent = 'Режим разработчика';
-        timer.textContent = '♾️ Бесконечные крутки';
+        setTxt(label, 'Режим разработчика');
+        setTxt(timer, '♾️ Бесконечные крутки');
       } else if (available) {
-        label.textContent = 'Бесплатная крутка';
-        timer.textContent = '✅ Доступна сейчас!';
+        setTxt(label, 'Бесплатная крутка');
+        setTxt(timer, '✅ Доступна сейчас!');
       } else {
-        label.textContent = 'До следующей крутки';
-        timer.textContent = left;
+        setTxt(label, 'До следующей крутки');
+        setTxt(timer, left);
       }
 
-      btnText.textContent = hasInfiniteWheel() ? '∞' : (available ? '' : left);
+      setTxt(btnText, hasInfiniteWheel() ? '∞' : (available ? '' : left));
       document.getElementById('wheelDot').classList.toggle('visible', available && !hasInfiniteWheel());
     }
 
@@ -10316,7 +10363,7 @@
       const ready = t.list.filter(x => !x.claimed && x.progress >= TASK_POOL.find(d => d.id === x.id).goal).length;
       const claimed = t.list.filter(x => x.claimed).length;
       const badge = document.getElementById('tasksBadge');
-      badge.textContent = ready ? `🎁 ${ready}` : `${claimed}/${t.list.length}`;
+      setTxt(badge, ready ? `🎁 ${ready}` : `${claimed}/${t.list.length}`);
       badge.classList.toggle('gold', ready > 0);
       const nt = document.getElementById('setNotifyToggle');
       if (nt) nt.checked = state.settings.botNotify !== false;
@@ -11227,31 +11274,33 @@
       const now = hmNow();
       const title = document.getElementById('hmTitle'), sub = document.getElementById('hmSub'), btn = document.getElementById('hmBtn');
       const end = h.heatedAt + HM_HEAT_MS;
-      card.className = 'hm-card';
+      let hmCls = 'hm-card';
       if (h.heatedAt && now < end) {
-        card.classList.add('hot');
-        title.textContent = '♨️ Хаммам прогрет';
-        sub.textContent = `Тепло ещё ${hmFmt(end - now)}`;
+        hmCls += ' hot';
+        setTxt(title, '♨️ Хаммам прогрет');
+        setTxt(sub, `Тепло ещё ${hmFmt(end - now)}`);
         btn.disabled = true;
-        btn.textContent = '♨️ Прогрет';
+        setTxt(btn, '♨️ Прогрет');
       } else if (!h.heatedAt) {
-        title.textContent = '🧖 Хаммам холодный';
-        sub.textContent = 'Прогрей его — тепла хватит на 24 часа. Не забывай прогревать снова, иначе мемы замёрзнут.';
+        setTxt(title, '🧖 Хаммам холодный');
+        setTxt(sub, 'Прогрей его — тепла хватит на 24 часа. Не забывай прогревать снова, иначе мемы замёрзнут.');
         btn.disabled = false;
-        btn.textContent = '🔥 Прогреть хаммам';
+        setTxt(btn, '🔥 Прогреть хаммам');
       } else {
         const steps = hmSteps(h, now);
         const nextLoss = end + (steps + 1) * HM_STEP_MS;
-        card.classList.add(h.applied > 0 ? 'frozen' : 'cooling');
-        title.textContent = h.applied > 0 ? `🥶 Мемы замёрзли: −10% ×${h.applied}` : '🌡️ Хаммам остывает!';
-        sub.textContent = h.applied > 0
+        hmCls += h.applied > 0 ? ' frozen' : ' cooling';
+        setTxt(title, h.applied > 0 ? `🥶 Мемы замёрзли: −10% ×${h.applied}` : '🌡️ Хаммам остывает!');
+        setTxt(sub, h.applied > 0
           ? `Мемы потеряли стоимость. Ещё −10% через ${hmFmt(nextLoss - now)} — прогрей хаммам!`
-          : `Прогрей за ${hmFmt(nextLoss - now)}, иначе мемы замёрзнут и потеряют 10% стоимости`;
+          : `Прогрей за ${hmFmt(nextLoss - now)}, иначе мемы замёрзнут и потеряют 10% стоимости`);
         btn.disabled = false;
-        btn.textContent = '🔥 Прогреть хаммам';
+        setTxt(btn, '🔥 Прогреть хаммам');
       }
+      if (card.classList.contains('heat-pop')) hmCls += ' heat-pop';
+      if (card.className !== hmCls) card.className = hmCls;
       const dot = document.getElementById('garageBadge');
-      if (dot && h.heatedAt && now >= end) dot.classList.add('hm-alert'); else if (dot) dot.classList.remove('hm-alert');
+      if (dot) dot.classList.toggle('hm-alert', Boolean(h.heatedAt && now >= end));
     }
     window.heatHammam = function() {
       hmApplyFreeze();
@@ -11287,7 +11336,7 @@
     setTimeout(() => { hmApplyFreeze(); renderHammam(); }, 800);
     setInterval(() => {
       hmApplyFreeze();
-      if (currentPage === 'garage' || !document.hidden) renderHammam();
+      if (!document.hidden) renderHammam();
     }, 1000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { hmApplyFreeze(); renderHammam(); } });
 
@@ -13040,6 +13089,39 @@
       setTimeout(() => { box.classList.remove('show'); setTimeout(achPopNext, 450); }, 3600);
     }
     document.getElementById('achPop').addEventListener('click', () => { document.getElementById('achPop').classList.remove('show'); });
+
+
+    // ===================== ⚡ ПРОИЗВОДИТЕЛЬНОСТЬ =====================
+    // Текст меняем, только если он правда другой (иначе каждую секунду лишний пересчёт страницы)
+    function setTxt(el, t) {
+      if (!el) return;
+      t = String(t);
+      if (el._txt === t) return;
+      el._txt = t;
+      el.textContent = t;
+    }
+    // Пока открыто окно — фон и страница под ним замирают (их почти не видно под шторкой)
+    (function() {
+      const root = document.documentElement;
+      const sync = () => root.classList.toggle('fx-sheet', Boolean(document.querySelector('.modal-overlay.open')));
+      document.querySelectorAll('.modal-overlay').forEach(ov => new MutationObserver(sync).observe(ov, { attributes: true, attributeFilter: ['class'] }));
+      sync();
+    })();
+    // Минута без касаний — декоративные анимации засыпают; любое касание будит
+    (function() {
+      const root = document.documentElement;
+      let last = Date.now();
+      const wake = () => { last = Date.now(); if (root.classList.contains('fx-idle')) root.classList.remove('fx-idle'); };
+      ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => document.addEventListener(ev, wake, { passive: true, capture: true }));
+      window.addEventListener('scroll', wake, { passive: true });
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
+      setInterval(() => {
+        if (document.hidden || Date.now() - last < 60000) return;
+        let busy = false;
+        try { busy = autoSpin || isBusy() || Boolean(state.crash) || Boolean(state.mines); } catch (e) {}
+        root.classList.toggle('fx-idle', !busy);
+      }, 5000);
+    })();
 
 
     // ===================== 🌐 ЯЗЫК =====================

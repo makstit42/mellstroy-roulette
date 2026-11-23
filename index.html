@@ -4502,20 +4502,6 @@
     .nav-inner { grid-template-columns: repeat(6, 1fr); }
     .nav-btn.nav-mr .nav-ico { filter: none; opacity: 1; text-shadow: 0 0 10px rgba(134, 239, 172, 0.55); }
     @media (max-width: 360px) { .nav-btn { font-size: 0.6rem; } }
-
-    /* Выбор языка */
-    .lang-pick { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; padding: 24px;
-      background: rgba(2, 6, 23, 0.86); backdrop-filter: blur(8px); }
-    .lang-pick[hidden] { display: none; }
-    .lang-box { width: min(340px, 100%); background: var(--card); border: 1px solid var(--border); border-radius: 26px; padding: 24px 20px;
-      display: flex; flex-direction: column; gap: 12px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
-    .lang-globe { font-size: 2.6rem; }
-    .lang-box h2 { font-size: 1.25rem; font-weight: 900; line-height: 1.3; }
-    .lang-box h2 small { font-size: 0.85rem; color: var(--muted); font-weight: 700; }
-    .lang-btn { min-height: 56px; border-radius: 18px; border: 1px solid var(--border); background: var(--card-dark); color: var(--text, #fff);
-      font-weight: 900; font-size: 1.05rem; }
-    .lang-btn:active { transform: scale(0.97); }
-    .lang-seg button { font-weight: 800; }
   </style>
 </head>
 <body>
@@ -22618,7 +22604,7 @@
         return `rgb(${r | 0},${g | 0},${bl | 0})`;
       }
       function drawChunk(ci, cj) {
-        const CH = R.CH, cs = Math.min(R.S, 1.6), px = CH * T * cs, cv = mkCanvas(px, px), c = cv.getContext('2d');
+        const CH = R.CH, px = Math.ceil(CH * T * Math.min(R.S, 1.6)), cs = px / (CH * T), cv = mkCanvas(px, px), c = cv.getContext('2d');
         c.scale(cs, cs); c.translate(-ci * CH * T, -cj * CH * T);
         const i0 = ci * CH, j0 = cj * CH;
         // основа: трава плавными пятнами, рукотворное — квадратами
@@ -22811,7 +22797,7 @@
         for (let cj = cj0; cj <= cj1; cj++) for (let ci = ci0; ci <= ci1; ci++) {
           const key = ci + ',' + cj; let ch = R.chunks.get(key);
           if (!ch) { ch = drawChunk(ci, cj); R.chunks.set(key, ch); if (R.chunks.size > 70) { const first = R.chunks.keys().next().value; R.chunks.delete(first); } }
-          ch.t = MR.t; c.drawImage(ch.cv, ci * CHW, cj * CHW, CHW, CHW);
+          ch.t = MR.t; const ov = 1.2 / S; c.drawImage(ch.cv, ci * CHW - ov * 0.5, cj * CHW - ov * 0.5, CHW + ov, CHW + ov);
         }
         // плоское: следы, пни, шипы, капканы, предметы, зона стройки
         for (const d of MR.decals) {

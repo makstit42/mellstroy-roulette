@@ -4300,6 +4300,8 @@
     .nt-pl img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; object-position: top; background: #1e293b; }
     .nt-pl b { font-size: 0.8rem; font-weight: 800; }
     .hb-go:disabled { filter: grayscale(0.6); opacity: 0.7; }
+    /* поле кода комнаты: в игре запрещено выделение текста — для полей ввода разрешаем, иначе на телефоне не печатается */
+    .ip-game input, .ip-game textarea { -webkit-user-select: text; user-select: text; touch-action: manipulation; pointer-events: auto; }
 
     /* Выбор языка */
     .lang-pick { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; padding: 24px;
@@ -15255,6 +15257,7 @@
       function snInt() { return SN.base * (IP.P.fireInt / BASE.fireInt) * IP.P.snRate; }
       function fireSniper(scoped, tx, ty) {
         const P = IP.P;
+        if (IP.netCli && scoped && isMe(P)) netSend('H', { t: 'sn', x: Math.round(tx), y: Math.round(ty) });
         let [mx, my] = muzzle(P), a = P.gunA;
         if (tx !== undefined) {
           const [gx, gy] = gunPivot(P);
@@ -15311,7 +15314,7 @@
       }
       function setWeapon(w) {
         const P = IP.P; if (!P || P.dead || P.down || P.wpn === w) return;
-        P.wpn = w; P.swapT = 0.35; P.aimT = 0; P.kick = 0; P.boltT = 9;
+        P.wpn = w; P.swapT = 0.35; P.aimT = 0; P.kick = 0; P.boltT = 9; if (IP.netCli && isMe(P)) NET.sendT = 0;
         if (!IP.testDrive && IP.mode === 'hub') { state.ipWpn = w; try { saveState(); } catch (e) {} }
         if (w !== 'sn') scopeSet(false);
         sfx('pump', 0.25, w === 'sn' ? 1.45 : 1); haptic('light');
@@ -15371,7 +15374,7 @@
         P.cd -= dt * (P.rage > 0 ? 2 : 1);
         P.anim += dt * (P.animSpd || 1);
         const aligned = Math.abs(angDiff(P.gunA, want)) < (sn ? 0.12 : P.wpn === 'ar' ? 0.2 : 0.3);
-        if (P.swapT <= 0 && !IP.netCli) {
+        if (P.swapT <= 0) {
           if (P.wpn === 'ar') { if (tg && P.cdA <= 0 && aligned) { P.cdA = arInt(); fireAR(tg.x, tg.type ? tg.y - 4 : tg.y); } }
           else if (!sn) { if (tg && P.cd <= 0 && aligned) { P.cd = sgInt(); fire(); } }
           else if (sc) { if (IP.snShot && P.cdS <= 0 && aligned) { IP.snShot = false; const am = scopeAim(); fireSniper(true, am.x, am.e && am.e.type ? am.e.y - 4 : am.y); } }
@@ -15390,7 +15393,7 @@
         const P = IP.P;
         if (!P || P.dead || P.down || P.picking || P.dashCdT > 0 || (IP.mode !== 'play' && IP.mode !== 'hub') || IP.paused || P.relaxT > 0) return;
         const me = isMe(P), K = me ? IP.keys : {};
-        let dx = me ? IP.input.x : P.inp.x, dy = me ? IP.input.y : P.inp.y; P.dashN = (P.dashN || 0) + 1;
+        let dx = me ? IP.input.x : P.inp.x, dy = me ? IP.input.y : P.inp.y; P.dashN = (P.dashN || 0) + 1; if (me && IP.netCli) NET.sendT = 0;
         const km = (K.ArrowRight || K.KeyD ? 1 : 0) - (K.ArrowLeft || K.KeyA ? 1 : 0), kv = (K.ArrowDown || K.KeyS ? 1 : 0) - (K.ArrowUp || K.KeyW ? 1 : 0);
         if (km || kv) { dx = km; dy = kv; }
         let l = Math.hypot(dx, dy);
@@ -18459,7 +18462,7 @@
         const host = netHost();
         if (!NET.ws && NET.state !== 'conn') return `<div class="hb-sec">🌐 ${tr('Игра с друзьями')}</div>
           <div class="nt-row"><button class="hb-btn buy" onclick="ipNetCreate()">➕ ${tr('Создать комнату')}</button></div>
-          <div class="nt-row"><input id="ipNetCode" class="nt-code" maxlength="5" placeholder="${tr('КОД')}" autocomplete="off" autocapitalize="characters"><button class="hb-btn" onclick="ipNetJoin()">${tr('Войти')}</button></div>
+          <div class="nt-row"><input id="ipNetCode" class="nt-code" type="text" inputmode="text" maxlength="5" placeholder="${tr('КОД')}" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="characters" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')" onkeydown="if (event.key === 'Enter') ipNetJoin()"><button class="hb-btn" onclick="ipNetJoin()">${tr('Войти')}</button></div>
           <div class="hb-note">${tr('Создай комнату и отправь код друзьям — до 4 игроков. Хост ведёт забег, остальные заходят по коду.')}</div>`;
         if (!NET.id) return `<div class="hb-sec">🌐 ${tr('Игра с друзьями')}</div><div class="hb-note">⏳ ${tr('Подключаемся к комнате')} ${NET.code}…</div><div class="nt-row"><button class="hb-btn" onclick="ipNetLeave()">${tr('Отмена')}</button></div>`;
         const pl = NET.roster.map(p => `<div class="nt-pl${p.id === NET.id ? ' me' : ''}"><img src="${MEME.posters[p.mid] || ''}" alt=""><b>${hEsc(p.name)}</b>${p.id === NET.host ? '<i>👑</i>' : ''}</div>`).join('');
@@ -18539,6 +18542,7 @@
         if (q.bot && !q.dead) { q.bot = 0; q.net = from; floatText(q.x, q.y - 70, '🌐 ' + q.name + ' ' + tr('снова в игре'), '#86efac', 13); }
         q.lastIn = IP.t;
         if (m.t === 'i') {
+          const tn = performance.now(); if (q.nx !== undefined && q.ntm) { const d = Math.max(0.03, (tn - q.ntm) / 1000); q.nvx = (m.x - q.nx) / d; q.nvy = (m.y - q.ny) / d; } q.ntm = tn;
           q.nx = m.x; q.ny = m.y; q.nin = { x: m.ix || 0, y: m.iy || 0 }; q.nface = m.f;
           if (m.w && m.w !== q.wpn && q.runW.includes(m.w)) asP(q, () => setWeapon(m.w));
           if (m.d && m.d !== q.ndash) { q.ndash = m.d; if (!q.down) { q.dashT = 0.2; q.inv = Math.max(q.inv, 0.25); } }
@@ -18550,7 +18554,8 @@
           const ok = (q.pickOpts || []).includes(m.id) ? m.id : (q.pickOpts || [])[0];
           q.pickWait = 0; q.picking = false;
           if (ok) asP(q, () => { applyUpg(ok); if (q.pickSrc === 'evidence') applyUpg(ok); const u = UPG.find(x => x.id === ok); if (u) floatText(q.x, q.y - 70, u.ico + ' ' + tr(u.name), '#fde047', 13); });
-        } else if (m.t === 'bye') netPlayerLeft(from);
+        } else if (m.t === 'sn') { asP(q, () => { if (q.wpn === 'sn' && q.cdS <= 0 && !q.down) fireSniper(true, m.x, m.y); }); }
+        else if (m.t === 'bye') netPlayerLeft(from);
       }
       // вышел посреди забега — его бойца ведёт бот, вернётся — снова его
       function netPlayerLeft(id) {
@@ -18565,7 +18570,8 @@
       }
       function netPlace(q) {
         if (q.down || q.dead || q.nx === undefined || IP.t - (q.lastIn || 0) > 6) return;
-        q.vx = (q.nx - q.x) * 15; q.vy = (q.ny - q.y) * 15; q.x = q.nx; q.y = q.ny;
+        const lead = Math.min(0.1, (performance.now() - (q.ntm || 0)) / 1000), px = q.nx + (q.nvx || 0) * lead, py = q.ny + (q.nvy || 0) * lead;
+        q.vx = (px - q.x) * 15; q.vy = (py - q.y) * 15; q.x = px; q.y = py; if (hitsWall(q.x, q.y, q.r)) { q.x = q.nx; q.y = q.ny; }
       }
       function netOffer(q, src) {
         const o = asP(q, () => offerUpgrades(3).filter(u => u.id !== 'bird'));
@@ -18634,7 +18640,7 @@
       }
       function netApply(s) {
         if (IP.mode !== 'play') return;
-        NET.lastSnap = performance.now();
+        const now = performance.now(), sdt = Math.min(0.25, Math.max(0.02, (now - (NET.lastSnap || now - 50)) / 1000)); NET.lastSnap = now;
         IP.wave = s.w; IP.phase = s.ph; NET.alive = s.al; IP.goldMul = s.g; IP.lunch = s.l; IP.combo = s.c;
         if (s.r && IP.run) { [IP.run.money, IP.run.kills, IP.run.bosses, IP.run.events, IP.run.waves, IP.run.safes] = s.r; }
         IP.night = s.n ? { a: s.n[0], on: !!s.n[1] } : null;
@@ -18645,7 +18651,7 @@
         for (const a of s.E) {
           let e = NET.emap.get(a[0]); const type = ETK[a[1]] || 'agent';
           if (!e) { e = { id: a[0], type, x: a[2], y: a[3], r: ETYPES[type].r, walk: Math.random() * 6, face: 1, fa: 0, hp: a[4], max: a[5], flash: 0, slow: 0, burn: 0, burnT: 0, dead: false, t: 0, kx: 0, ky: 0, vx: 0, vy: 0, light: 0, ang: 0 }; NET.emap.set(e.id, e); IP.E.push(e); }
-          e.tx = a[2]; e.ty = a[3]; e.hp = a[4]; e.max = a[5]; e.face = a[6]; e.fa = a[7]; e.ang = a[7]; if (a[8]) e.flash = 0.09; e.slow = a[9] ? 1 : 0; e.state = a[10] ? 'tele' : 'walk'; if (a[11]) { e.cdx = a[11][0]; e.cdy = a[11][1]; } e.angry = a[12]; e.light = a[13] || e.light;
+          if (e.tx !== undefined) { e.svx = (a[2] - e.tx) / sdt; e.svy = (a[3] - e.ty) / sdt; } e.tx = a[2]; e.ty = a[3]; e.hp = a[4]; e.max = a[5]; e.face = a[6]; e.fa = a[7]; e.ang = a[7]; if (a[8]) e.flash = 0.09; e.slow = a[9] ? 1 : 0; e.state = a[10] ? 'tele' : 'walk'; if (a[11]) { e.cdx = a[11][0]; e.cdy = a[11][1]; } e.angry = a[12]; e.light = a[13] || e.light;
           seen.add(e.id);
         }
         for (const [id, e] of NET.emap) if (!seen.has(id)) { e.dead = true; NET.emap.delete(id); }
@@ -18655,7 +18661,7 @@
         for (const a of s.P) {
           const q = (IP.team || []).find(o => o.slot === a[1]); if (!q) continue;
           const own = q === IP.me;
-          if (!own) { q.tx = a[2]; q.ty = a[3]; q.face = a[4]; q.gunA = a[5]; if (q.wpn !== a[6]) { q.wpn = a[6]; q.swapT = 0.3; } }
+          if (!own) { if (q.tx !== undefined) { q.svx = (a[2] - q.tx) / sdt; q.svy = (a[3] - q.ty) / sdt; } q.tx = a[2]; q.ty = a[3]; q.face = a[4]; q.gunA = a[5]; if (q.wpn !== a[6]) { q.wpn = a[6]; q.swapT = 0.3; } }
           else if (q.wpn !== a[6] && q.runW.includes(a[6]) === false) q.wpn = a[6];
           const wasDown = q.down;
           q.hp = a[7]; q.hpMax = a[8]; q.down = !!a[9]; q.dead = !!a[10]; q.inv = a[11] ? Math.max(q.inv, 0.2) : Math.min(q.inv, 0); q.shieldT = a[12] ? 1 : 0; q.rage = a[13] ? 1 : 0; q.picking = !!a[14] && !own ? true : own ? q.picking : false;
@@ -18695,6 +18701,7 @@
       // выстрел напарника (или свой — от хоста): только картинка, урон считает хост
       function netShotPlay(f) {
         const [, slot, w, mx, my, a, n, sp] = f, q = (IP.team || []).find(o => o.slot === slot);
+        if (q === IP.me) return;
         const near = Math.hypot(mx - IP.me.x, my - IP.me.y) < 700, vol = near ? (q === IP.me ? 1 : 0.45) : 0;
         if (q) { q.gunA = a; if (w === 'sg') { q.anim = 0; q.animSpd = 1.4; } else q.kick = w === 'sn' ? 1 : Math.min(1, (q.kick || 0) + 0.35); }
         if (w === 'sg') { for (let k = 0; k < n; k++) { const aa = a + (n > 1 ? (k / (n - 1) - 0.5) * 2 * sp : 0) + rnd(-0.035, 0.035), v = 950 * rnd(0.9, 1.08); IP.pel.push({ x: mx, y: my, px: mx, py: my, vx: Math.cos(aa) * v, vy: Math.sin(aa) * v, life: 0.32, dmg: 0, pierce: 0, bounce: 0, hit: [], fake: 1 }); } if (vol) sfx('bang', 0.55 * vol, rnd(0.95, 1.06)); }
@@ -18733,9 +18740,9 @@
         IP.t += dt; IP.coinSndT -= dt; IP.hitSndT -= dt;
         const P = IP.P;
         updatePlayer(dt);
-        const k = Math.min(1, dt * 12);
-        for (const e of IP.E) { if (e.tx === undefined) continue; const ox = e.x, oy = e.y; e.x = lerp(e.x, e.tx, k); e.y = lerp(e.y, e.ty, k); const mv = Math.hypot(e.x - ox, e.y - oy); e.walk += mv * 0.08; e.flash -= dt; e.light += dt; }
-        for (const q of (IP.team || [])) { if (q === P || q.tx === undefined) continue; const ox = q.x, oy = q.y; q.x = lerp(q.x, q.tx, k); q.y = lerp(q.y, q.ty, k); q.vx = (q.x - ox) / Math.max(dt, 1e-3); q.vy = (q.y - oy) / Math.max(dt, 1e-3); q.walk = (q.walk || 0) + (Math.hypot(q.vx, q.vy) > 20 ? dt * 10 : 0); q.anim = (q.anim || 0) + dt * (q.animSpd || 1); q.kick = Math.max(0, (q.kick || 0) - dt * 4.5); q.inv -= dt; if (q.swapT > 0) q.swapT -= dt; q.boltT = (q.boltT || 0) + dt; }
+        const k = Math.min(1, dt * 16), age = Math.min(0.12, (performance.now() - (NET.lastSnap || 0)) / 1000);
+        for (const e of IP.E) { if (e.tx === undefined) continue; const ox = e.x, oy = e.y; e.x = lerp(e.x, e.tx + (e.svx || 0) * age, k); e.y = lerp(e.y, e.ty + (e.svy || 0) * age, k); const mv = Math.hypot(e.x - ox, e.y - oy); e.walk += mv * 0.08; e.flash -= dt; e.light += dt; }
+        for (const q of (IP.team || [])) { if (q === P || q.tx === undefined) continue; const ox = q.x, oy = q.y; q.x = lerp(q.x, q.tx + (q.svx || 0) * age, k); q.y = lerp(q.y, q.ty + (q.svy || 0) * age, k); q.vx = (q.x - ox) / Math.max(dt, 1e-3); q.vy = (q.y - oy) / Math.max(dt, 1e-3); q.walk = (q.walk || 0) + (Math.hypot(q.vx, q.vy) > 20 ? dt * 10 : 0); q.anim = (q.anim || 0) + dt * (q.animSpd || 1); q.kick = Math.max(0, (q.kick || 0) - dt * 4.5); q.inv -= dt; if (q.swapT > 0) q.swapT -= dt; q.boltT = (q.boltT || 0) + dt; }
         for (const v of IP.vans) v.light += dt;
         for (const it of IP.items) { if (it.tx === undefined) continue; it.x = lerp(it.x, it.tx, k); it.y = lerp(it.y, it.ty, k); it.t += dt; }
         for (const f of IP.foes) { f.x += f.vx * dt; f.y += f.vy * dt; if (!f.kind) f.rot += dt * 9; }
@@ -18750,7 +18757,7 @@
       // каждый кадр: хост — снимок 15 раз в секунду, клиент — своё положение 15 раз в секунду
       function netTick(dt) {
         if (!IP.netRun) return;
-        NET.sendT -= dt; if (NET.sendT > 0) return; NET.sendT = 1 / 15;
+        NET.sendT -= dt; if (NET.sendT > 0) return; NET.sendT = 1 / 20;
         if (IP.netHost) { netPickTimeout(); netSnap(); return; }
         const P = IP.P;
         netSend('H', { t: 'i', x: r0(P.x), y: r0(P.y), f: P.face, ix: r2(IP.input.x), iy: r2(IP.input.y), w: P.wpn, d: P.dashN || 0 });
@@ -19395,8 +19402,10 @@
         $('ipDash').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); dash(); });
         $('ipWpn').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if ((IP.mode === 'play' || IP.mode === 'hub') && !IP.paused && IP.P) { const L = wpnList(); setWeapon(L[(L.indexOf(IP.P.wpn) + 1) % L.length]); } });
         $('ipScope').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (IP.mode === 'play' && !IP.paused) scopeSet(!IP.scope); });
+        // в полях ввода (код комнаты) клавиши — для текста, а не для бойца
+        const typing = (e) => { const t = e.target; return !!(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)); };
         window.addEventListener('keydown', (e) => {
-          if (!IP.on) return;
+          if (!IP.on || typing(e)) return;
           if (e.code === 'Escape' || e.code === 'KeyP') { e.preventDefault(); window.ipBack(); return; }
           if (IP.mode !== 'play' && IP.mode !== 'hub') return;
           if (IP.cut && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); window.ipCineSkip(); return; }
@@ -19409,7 +19418,7 @@
           if (e.code === 'KeyE') { e.preventDefault(); scopeSet(!IP.scope); return; }
           if (/^(Arrow|Key[WASD])/.test(e.code)) { IP.keys[e.code] = 1; e.preventDefault(); }
         });
-        window.addEventListener('keyup', (e) => { if (IP.keys[e.code]) delete IP.keys[e.code]; });
+        window.addEventListener('keyup', (e) => { if (typing(e)) return; if (IP.keys[e.code]) delete IP.keys[e.code]; });
       }
       bindInput();
       // карточка игры в Хаммаме

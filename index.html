@@ -4471,6 +4471,7 @@
     @keyframes mrUp { from { transform: translateY(100%); } to { transform: none; } }
     /* вступление */
     .mr-hud.cine { display: none; }
+    .mr-hud.bare .mr-btns, .mr-hud.bare .mr-act, .mr-hud.bare .mr-pack, .mr-hud.bare .mr-heart, .mr-hud.bare .mr-surv { display: none; }
     .mr-cine { position: absolute; inset: 0; z-index: 7; display: flex; flex-direction: column; justify-content: space-between; }
     .mrc-bar { background: #000; min-height: 12vh; display: flex; align-items: center; justify-content: center; padding: 10px 16px; }
     .mrc-bar.top { align-items: flex-end; padding-top: calc(var(--safe-top, 0px) + 10px); }
@@ -20850,6 +20851,7 @@
         if (!lt || dist(lt.x, lt.y, p.x, p.y) > 14) { p.trail.push({ x: p.x, y: p.y }); p.trailN++; if (p.trail.length > 220) p.trail.shift(); }
         // разведка тумана
         reveal(p.x, p.y, (isNight() ? 3.4 : 6.5) + p.vision);
+        if (MR.phase === 'pre') { p.act = null; p.gNode = -1; p.lampOn = false; return; }      // ещё ничего нет: ни оружия, ни инструментов
         // база: выгрузка, подзарядка фонаря
         const home = inBase(p);
         if (home && (p.invN > 0 || p.radio.length)) depositAll(p);
@@ -21130,7 +21132,7 @@
         if (e.spawnT > 0) { e.spawnT -= dt; return; }
         e.flash = Math.max(0, e.flash - dt); e.cd -= dt; e.lunge = Math.max(0, e.lunge - dt * 3);
         if (e.held > 0) { e.held -= dt; e.vx = e.vy = 0; return; }
-        if (e.sleep) { e.think -= dt; if (e.think <= 0) { e.think = 0.4; if (nearestPl(e.x, e.y, 4.5 * T)) wake(e); } return; }
+        if (e.sleep) { e.think -= dt; if (e.think <= 0) { e.think = 0.4; if (MR.phase !== 'pre' && nearestPl(e.x, e.y, 4.5 * T)) wake(e); } return; }
         // Бледыши боятся света: горят в нём и пятятся
         if (D.scared && MR.dark > 0.3) {
           const L = lightAt(e.x, e.y); let lamp = null;
@@ -21298,6 +21300,7 @@
         s.sayT -= dt; if (s.sayT <= 0) s.say = ''; s.hurtT = Math.max(0, (s.hurtT || 0) - dt); s.cd = (s.cd || 0) - dt;
         let gx, gy, sp = 150;
         if (s.st === 'lost') {
+          if (MR.phase === 'pre') return;
           const p = nearestPl(s.x, s.y, 2.4 * T, q => !q.bot); if (p) survJoin(s, p);
           else if (!s.sayT || s.sayT < -6) { if (explored(s.x, s.y) && nearestPl(s.x, s.y, 9 * T)) { s.say = pick([tr('Помогите!'), tr('Эй! Я здесь!'), tr('Заберите меня!')]); s.sayT = 2.5; } }
           return;
@@ -22054,6 +22057,7 @@
           if (m.w && MR.gear.guns.includes(m.w)) q.wpn = m.w;
           return;
         }
+        if ((MR.phase === 'pre' || MR.phase === 'cine' || MR.phase === 'note') && (m.t === 'lamp' || m.t === 'b' || m.t === 'p' || m.t === 'sleep')) return;
         if (m.t === 'lamp') { q.lampOn = !!m.on && q.bat > 1; return; }
         if (m.t === 'qr') {
           if (m.k === 'grab') { const E = MR.pale; if (E && E.grabP === q && E.grabCb) E.grabCb(!!m.ok); }
@@ -22725,7 +22729,7 @@
         else { c.fillStyle = p.bot ? '#38bdf8' : '#facc15'; rr(c, -11, -h + 4 - bob, 22, h - 6, 9); c.fill(); }
         c.restore();
         if (p.dead) return;
-        if (!p.down && p.sleepT <= 0) {
+        if (!p.down && p.sleepT <= 0 && MR.phase !== 'pre' && MR.phase !== 'note') {
           if (p.act && (p.act.k === 'axe' || p.act.k === 'bar' || p.act.k === 'hand')) {
             const sw = -0.9 + Math.sin(Math.min(1, p.act.t) * Math.PI) * 1.9; c.save(); c.translate(p.x + p.face * 10, p.y - 24); c.scale(p.face, 1); c.rotate(sw); c.font = '18px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(p.act.k === 'axe' ? '🪓' : p.act.k === 'bar' ? '🔧' : '✋', 10, -6); c.restore();
           } else drawGunAt(c, p, p.x + p.face * 6, p.y - 22, p.gunA, p.wpn);
@@ -23001,7 +23005,7 @@
         setW('mrHpBar', p.hp / p.hpMax); setHTML('mrHpT', Math.ceil(Math.max(0, p.hp)) + '');
         setW('mrFoodBar', p.hunger / 100); setW('mrSleepBar', p.energy / 100);
         const ph = MR.phase, nt = { fog: '🌫️', blood: '🩸', quiet: '🤫', boss: '👑', final: '🚆' }[MR.nightType] || '';
-        setHid('mrCine', ph !== 'cine'); $('mrHud').classList.toggle('cine', ph === 'cine'); setHid('mrPreSkip', ph !== 'pre');
+        setHid('mrCine', ph !== 'cine'); $('mrHud').classList.toggle('cine', ph === 'cine'); $('mrHud').classList.toggle('bare', ph === 'pre' || ph === 'note'); setHid('mrPreSkip', ph !== 'pre');
         if (ph === 'cine' && MR.cine) setHTML('mrCineCap', captionFor(MR.cine.t));
         if (ph === 'note' && !MR.noteHidden && $('mrNote').hidden) noteShow(''); if (ph !== 'note' && !$('mrNote').hidden) $('mrNote').hidden = true;
         if (ph === 'pre' || ph === 'cine' || ph === 'note') setHTML('mrClock', '🧭 ' + tr('Найдите выход из леса')); else setHTML('mrClock', ph === 'night' ? `🌙 ${tr('Ночь')} ${MR.day} ${nt} <b>${mmss(MR.pt)}</b>` : ph === 'train' ? `🚆 ${tr('Электричка')} <b>${mmss(MR.pt)}</b>` : ph === 'dawn' ? `🌅 ${tr('Рассвет')}` : `${MR.pt < 22 ? '🌇' : '☀️'} ${tr('День')} ${MR.day} <b>${mmss(MR.pt)}</b>`);
@@ -23025,7 +23029,7 @@
         drawMapTo($('mrMini'), false); mnPingHud();
       }
       function actAt(p) {
-        if (!p || p.down || p.dead || p.sleepT > 0 || p.boarded) return null;
+        if (!p || p.down || p.dead || p.sleepT > 0 || p.boarded || MR.phase === 'pre' || MR.phase === 'note' || MR.phase === 'cine') return null;
         const H = MR.heart;
         if (dist(p.x, p.y, H.x, H.y) < 2.5 * T) return { k: 'heart', label: '❤️‍🔥 ' + tr('Сердце') };
         for (const B of MR.blds) {
@@ -23046,7 +23050,7 @@
 
       // ---------- стройка: меню и выбор ----------
       function buildOpen() {
-        if (MR.mode !== 'play') return;
+        if (MR.mode !== 'play' || MR.phase === 'pre' || MR.phase === 'cine' || MR.phase === 'note') return;
         if (MR.build) { buildClose(); return; }
         MR.build = { k: MR.lastBuild || 'wall', ghost: null }; MR.sel = null; bpopHide();
         renderBuild(); $('mrBuild').hidden = false; ghostAuto(); snd('click');
@@ -23341,7 +23345,7 @@
         const m = Math.min(1, d / R0); MR.input.x = m > 0.12 ? dx / R0 / Math.max(m, 0.001) * m : 0; MR.input.y = m > 0.12 ? dy / R0 / Math.max(m, 0.001) * m : 0;
         const l = Math.hypot(MR.input.x, MR.input.y); if (l > 1) { MR.input.x /= l; MR.input.y /= l; }
       }
-      function lampToggle() { const p = MR.me; if (!p || p.dead) return; if (p.bat <= 1) { toast(tr('Фонарь сел — подзаряди у Сердца')); return; } p.lampOn = !p.lampOn; p.lampT = MR.t; snd('click'); if (MR.net === 'cli') mnReq({ t: 'lamp', on: p.lampOn ? 1 : 0 }); }
+      function lampToggle() { const p = MR.me; if (!p || p.dead || MR.phase === 'pre' || MR.phase === 'cine' || MR.phase === 'note') return; if (p.bat <= 1) { toast(tr('Фонарь сел — подзаряди у Сердца')); return; } p.lampOn = !p.lampOn; p.lampT = MR.t; snd('click'); if (MR.net === 'cli') mnReq({ t: 'lamp', on: p.lampOn ? 1 : 0 }); }
       function toWorld(cx, cy) { const V = viewBox(); return { x: V.x0 + cx * R.dpr / R.S, y: V.y0 + cy * R.dpr / R.S }; }
       function bindInput() {
         const cv = $('mrCanvas'); if (!cv) return;

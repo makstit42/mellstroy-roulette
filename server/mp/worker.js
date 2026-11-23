@@ -20,13 +20,17 @@
 
 import { DurableObject } from 'cloudflare:workers';
 
-const VERSION = 1;
+const VERSION = 2;
 const MAX_PLAYERS = 4;
 const MAX_FRAME = 64 * 1024;
 const CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';     // без 0/O и 1/I — чтобы код легко продиктовать
 const CODE_RE = /^[A-HJ-NP-Z2-9]{5}$/;
 const ALLOWED_ORIGINS = ['https://makstit42.github.io'];
 const INIT_DATA_MAX_AGE_S = 7 * 24 * 3600;
+// Где держать комнаты. Игроки в Узбекистане — ближе всего Восточная Европа (eeur).
+// Другие варианты: weur, me (Ближний Восток), apac, wnam, enam. Можно переопределить переменной ROOM_REGION.
+const ROOM_REGION = 'eeur';
+const roomStub = (env, code) => env.ROOM.get(env.ROOM.idFromName(code), { locationHint: env.ROOM_REGION || ROOM_REGION });
 
 function newCode() {
   const b = crypto.getRandomValues(new Uint8Array(5));
@@ -89,7 +93,8 @@ export class Room extends DurableObject {
     const url = new URL(req.url);
     if (url.pathname.endsWith('/info')) {
       const r = await this.roster();
-      return Response.json({ n: r.players.length, state: r.state, players: r.players.map(p => ({ id: p.id, name: p.name, mid: p.mid })) });
+      if (!this.colo) { try { const t = await (await fetch('https://cloudflare.com/cdn-cgi/trace')).text(); this.colo = (t.match(/colo=(\w+)/) || [])[1] || '?'; } catch (e) { this.colo = '?'; } }
+      return Response.json({ n: r.players.length, state: r.state, colo: this.colo, players: r.players.map(p => ({ id: p.id, name: p.name, mid: p.mid })) });
     }
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('Нужен WebSocket', { status: 426 });
     const pair = new WebSocketPair();
@@ -210,11 +215,11 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
     if (!env.ROOM) return json({ error: 'Нет привязки Durable Object с именем ROOM' }, 500);
 
-    if (url.pathname === '/health') return json({ ok: true, ver: VERSION });
+    if (url.pathname === '/health') return json({ ok: true, ver: VERSION, edge: (req.cf && req.cf.colo) || '', region: env.ROOM_REGION || ROOM_REGION });
 
     if (url.pathname === '/room/new') {
       for (let k = 0; k < 6; k++) {
-        const code = newCode(), stub = env.ROOM.get(env.ROOM.idFromName(code));
+        const code = newCode(), stub = roomStub(env, code);
         const info = await (await stub.fetch('https://room/info')).json();
         if (!info.n) return json({ code });
       }
@@ -225,7 +230,7 @@ export default {
     if (m) {
       const code = m[1].toUpperCase();
       if (!CODE_RE.test(code)) return json({ error: 'Неверный код комнаты' }, 400);
-      const stub = env.ROOM.get(env.ROOM.idFromName(code));
+      const stub = roomStub(env, code);
       if (m[2]) { const r = await stub.fetch('https://room/info'); return json(await r.json()); }
       if (req.headers.get('Upgrade') !== 'websocket') return json({ error: 'Нужен WebSocket' }, 426);
       if (origin && !allowed.includes(origin)) return new Response('Чужой сайт', { status: 403 });

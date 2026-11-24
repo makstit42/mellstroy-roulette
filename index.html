@@ -8249,16 +8249,34 @@
       if (!music.gain) {
         music.gain = ctx.createGain();
         music.gain.gain.value = 0;
-        music.gain.connect(ctx.destination);
+        music.lp = ctx.createBiquadFilter(); music.lp.type = 'lowpass'; music.lp.frequency.value = 18000; music.lp.Q.value = 0.7;
+        music.gain.connect(music.lp); music.lp.connect(ctx.destination);
+        try { const wob = ctx.createOscillator(); wob.frequency.value = 0.35; music.wobG = ctx.createGain(); music.wobG.gain.value = 0; wob.connect(music.wobG); music.wobG.connect(music.lp.frequency); wob.start(); } catch (e) {}
       }
       return ctx;
     }
 
     function applyMusicVolume() {
       if (!music.gain || !audioCtx) return;
-      const target = bgm.duck.has('iphm') || bgm.duck.has('mr') ? 0 : musicVolume() * (bgm.duck.size ? 0.2 : 1);
+      const target = bgm.duck.has('iphm') || bgm.duck.has('mr') ? 0 : musicVolume() * (bgm.duck.size ? 0.2 : 1) * (musicUnderSet.size ? 0.75 : 1);
       music.gain.gain.cancelScheduledValues(audioCtx.currentTime);
       music.gain.gain.setTargetAtTime(music.on ? target : 0, audioCtx.currentTime, 0.25);
+    }
+
+    // «Под водой»: key — кто просит (игра с открытым меню)
+    const musicUnderSet = new Set();
+    function musicUnder(key, on) {
+      const was = musicUnderSet.size > 0;
+      if (on) musicUnderSet.add(key); else musicUnderSet.delete(key);
+      const now = musicUnderSet.size > 0;
+      if (was !== now && music.lp && audioCtx) {
+        const t = audioCtx.currentTime, f = music.lp.frequency;
+        f.cancelScheduledValues(t); f.setValueAtTime(Math.max(200, f.value), t);
+        f.exponentialRampToValueAtTime(now ? 650 : 18000, t + (now ? 0.45 : 0.4));
+        music.lp.Q.setTargetAtTime(now ? 0.85 : 0.7, t, 0.15);
+        if (music.wobG) music.wobG.gain.setTargetAtTime(now ? 70 : 0, t, now ? 0.3 : 0.1);
+      }
+      applyMusicVolume();
     }
 
     // Приглушаем музыку, пока играет мем (key — кто просит)
@@ -20085,6 +20103,8 @@
       window.renderIpCard = renderIpCard;
       setTimeout(renderIpCard, 600);
       // для проверок
+      // музыка «под водой», пока открыто меню: пауза, окна, диалог, выбор, стартовый экран, итоги
+      setInterval(() => { const u = !!IP.on && (IP.paused || !!IP.panel || !!IP.pickSrc || !!IP.dlg || IP.mode === 'menu' || IP.mode === 'over'); if (u !== !!IP.uw) { IP.uw = u; try { musicUnder('ip', u); } catch (e) {} } }, 120);
       window.IPG = { NV, HMS, IP, M, R, A, ETYPES, UPG, spawnEnemy, step, applyUpg, startWave, fightWave, explodeBarrel, useSpot, buildFlow, los, draw, hud, resize, banner, gameOver, finishRun, T, getChunk, CPX, CHUNK, MW, MH, FLOW, flowDir, buildSprites, spotReady, kick, dash, openPick, EVK, evForce, evTarget, CELL, fieldTo, ev: () => IP.ev, CITY, HUB, HUBO, useMap, hubEnter, hubStep, HUP, HWPN, HGEAR, HCT, ctState, wpnList, wpnOwned, hubZoneAt, rangeStart, hubOpen, map: () => M, setWeapon, scopeSet, fireSniper, snInt, snRange, SN, evShootables, scopeAim, offerUpgrades, sgInt, sgRange, arInt, arRange, WTAG, cineStart, cineEnd, qteStart, qteTap, wpnFound, dropWeapon, wpnMissing, hitEnemy, dlgOpen, dlgClose, tutGo, tutState, tutTarget, TUT, DLG, teamList, coop, playerDown, revive, foeTarget, hurtPlayer, asP, VAULT, walkTiles, coopTarget, vanRoute, drvGrid, sendVan, convoyRoute, NET, netOn, netHost };
 
     })();

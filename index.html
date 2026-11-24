@@ -23066,7 +23066,11 @@
         try {
           const ctx = getAudioCtx(); MUS.ctx = ctx; musWake(); const now = ctx.currentTime;
           const G = (v, to) => { const g = ctx.createGain(); g.gain.value = v; if (to) g.connect(to); return g; };
-          MUS.out = G(0, ctx.destination);
+          // «под водой»: в меню и на паузе музыка уходит за фильтр низких частот и слегка плывёт
+          MUS.lp = ctx.createBiquadFilter(); MUS.lp.type = 'lowpass'; MUS.lp.frequency.value = 18000; MUS.lp.Q.value = 0.7; MUS.lp.connect(ctx.destination);
+          const wob = ctx.createOscillator(); wob.frequency.value = 0.35; MUS.wobG = G(0); wob.connect(MUS.wobG); MUS.wobG.connect(MUS.lp.frequency); wob.start(now); MUS.oscs.push(wob);
+          MUS.uw = -1;
+          MUS.out = G(0, MUS.lp);
           // эхо: задержка с затуханием
           MUS.dl = ctx.createDelay(1.2); MUS.dl.delayTime.value = 0.42; MUS.fb = G(0.38); MUS.dlf = ctx.createBiquadFilter(); MUS.dlf.type = 'lowpass'; MUS.dlf.frequency.value = 1600;
           MUS.dl.connect(MUS.dlf); MUS.dlf.connect(MUS.fb); MUS.fb.connect(MUS.dl); MUS.dlf.connect(MUS.out);
@@ -23083,7 +23087,7 @@
       }
       function musStop() {
         if (!MUS.on) return; MUS.on = false; clearInterval(MUS.timer);
-        try { const now = MUS.ctx.currentTime, out = MUS.out, os = MUS.oscs; MUS.oscs = []; out.gain.cancelScheduledValues(now); out.gain.setTargetAtTime(0, now, 0.25); setTimeout(() => { for (const o of os) try { o.stop(); } catch (e) {} try { out.disconnect(); } catch (e) {} }, 1200); } catch (e) {}
+        try { const now = MUS.ctx.currentTime, out = MUS.out, lp = MUS.lp, os = MUS.oscs; MUS.oscs = []; out.gain.cancelScheduledValues(now); out.gain.setTargetAtTime(0, now, 0.25); setTimeout(() => { for (const o of os) try { o.stop(); } catch (e) {} try { out.disconnect(); lp.disconnect(); } catch (e) {} }, 1200); } catch (e) {}
       }
       function tone(freq, t, dur, type, vol, dest, att = 0.01, send = 0) {
         const ctx = MUS.ctx, o = ctx.createOscillator(), g = ctx.createGain();
@@ -23150,7 +23154,14 @@
         const ctx = MUS.ctx, now = ctx.currentTime, tg = musTarget();
         if (ctx.state !== 'running') { MUS.wake -= 0.09; if (MUS.wake <= 0) { MUS.wake = 1; musWake(); } return; }
         MUS.night += (tg.night - MUS.night) * 0.06; MUS.inten += (tg.inten - MUS.inten) * 0.12;
-        const vol = musicVolume() * 1.7 * (MR.paused || MR.panel ? 0.45 : 1) * (MR.mode === 'play' ? 1 : 0.6);
+        const under = MR.paused || !!MR.panel || MR.mode !== 'play';
+        if (under !== (MUS.uw === 1)) {   // плавный уход под воду и обратно
+          MUS.uw = under ? 1 : 0; const f = MUS.lp.frequency, Q = MUS.lp.Q;
+          f.cancelScheduledValues(now); f.setValueAtTime(Math.max(200, f.value), now);
+          if (under) { f.exponentialRampToValueAtTime(650, now + 0.45); Q.setTargetAtTime(0.85, now, 0.15); MUS.wobG.gain.setTargetAtTime(70, now, 0.3); }
+          else { f.exponentialRampToValueAtTime(18000, now + 0.4); Q.setTargetAtTime(0.7, now, 0.15); MUS.wobG.gain.setTargetAtTime(0, now, 0.1); }
+        }
+        const vol = musicVolume() * 1.7 * (under ? 0.75 : 1);
         MUS.out.gain.setTargetAtTime(vol, now, 0.4);
         MUS.dayG.gain.setTargetAtTime(Math.max(0, 1 - MUS.night * 1.4), now, 0.5);
         MUS.nightG.gain.setTargetAtTime(Math.max(0, MUS.night * 1.3 - 0.3), now, 0.5);

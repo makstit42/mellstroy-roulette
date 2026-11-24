@@ -18770,6 +18770,10 @@
         return '';
       }
 
+      // auto-open by invite: игру открыли ссылкой room_КОД — сразу в хаб, там вход в комнату
+      setTimeout(() => {
+        try { const p = typeof tg !== 'undefined' && tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param; if (!p || !/^room_[A-Z0-9]{5}$/.test(p) || IP.on || !heroItem()) return; window.openHub(); } catch (e) {}
+      }, 2200);
       // ===================== старт забега =====================
       // хост: состав команды всем, свой забег как обычно (боты и сетевые игроки — в teamBuild)
       function netHostStart() {

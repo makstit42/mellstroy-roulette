@@ -23095,12 +23095,13 @@
           MUS.dl = ctx.createDelay(1.2); MUS.dl.delayTime.value = 0.42; MUS.fb = G(0.38); MUS.dlf = ctx.createBiquadFilter(); MUS.dlf.type = 'lowpass'; MUS.dlf.frequency.value = 1600;
           MUS.dl.connect(MUS.dlf); MUS.dlf.connect(MUS.fb); MUS.fb.connect(MUS.dl); MUS.dlf.connect(MUS.out);
           MUS.send = G(1, MUS.dl);
-          MUS.dayG = G(0, MUS.out); MUS.nightG = G(0, MUS.out);
+          MUS.dayG = G(0, MUS.out); MUS.nightG = G(0, MUS.out); MUS.cmbG = G(0, MUS.out);
           // ночной ветер: бурый шум через мягкий фильтр, порывы — медленная волна по частоте
           const ws = ctx.createBufferSource(); ws.buffer = brownBuf(ctx); ws.loop = true;
           MUS.wf = ctx.createBiquadFilter(); MUS.wf.type = 'lowpass'; MUS.wf.frequency.value = 420; MUS.wf.Q.value = 0.6;
           MUS.windG = G(0, MUS.nightG); ws.connect(MUS.wf); MUS.wf.connect(MUS.windG); ws.start(now); MUS.oscs.push(ws);
           const lfo = ctx.createOscillator(); lfo.frequency.value = 0.08; const lg = G(170); lfo.connect(lg); lg.connect(MUS.wf.frequency); lfo.start(now); MUS.oscs.push(lfo);
+          MUS.cNext = now + 0.1; MUS.cStep = 0; MUS.heat = 0; MUS.after = 0; MUS.hurtT = 0; MUS.lastHp = 0;
           MUS.on = true; MUS.step = 0; MUS.next = now + 0.1; MUS.nextBell = now + 4; MUS.nextBox = now + 9; MUS.nextHb = now + 1; MUS.nextBird = now + 2; MUS.nextCrk = now + 1; MUS.nextSwell = now + 6;
           clearInterval(MUS.timer); MUS.timer = setInterval(musTick, 90);
         } catch (e) { MUS.on = false; }
@@ -23183,10 +23184,14 @@
         }
         const vol = musicVolume() * 1.7 * (under ? 0.75 : 1);
         MUS.out.gain.setTargetAtTime(vol, now, 0.4);
-        MUS.dayG.gain.setTargetAtTime(Math.max(0, 1 - MUS.night * 1.4), now, 0.5);
+        combatHeat(0.09);
+        const H = MUS.heat; MUS.cmbG.gain.setTargetAtTime(Math.min(1, H * 1.5), now, H > MUS.cmbShown ? 0.15 : 0.8); MUS.cmbShown = H;
+        MUS.dayG.gain.setTargetAtTime(Math.max(0, 1 - MUS.night * 1.4) * (1 - H * 0.7), now, 0.5);
         MUS.nightG.gain.setTargetAtTime(Math.max(0, MUS.night * 1.3 - 0.3), now, 0.5);
         MUS.windG.gain.setTargetAtTime(0.11 + MUS.inten * 0.14, now, 0.8);
         const ahead = now + 0.25;
+        if (H > 0.08) { const sp = 60 / 160 / 4; if (MUS.cNext < now) MUS.cNext = now + 0.05; while (MUS.cNext < ahead) { combatStep(MUS.cNext, H); MUS.cNext += sp; MUS.cStep++; } }
+        else { MUS.cNext = now + 0.05; MUS.cStep = 0; }
         if (MUS.night < 0.85) { const sp = 60 / 84 / 2; while (MUS.next < ahead) { dayStep(MUS.next); MUS.next += sp; MUS.step++; } if (MUS.nextBird < now) { birds(now + 0.05); MUS.nextBird = now + rnd(3, 8); } }
         else MUS.next = now + 0.1;
         if (MUS.night > 0.2) {
@@ -23198,6 +23203,72 @@
           if (MUS.nextCrk < now) { crickets(now + 0.02); MUS.nextCrk = now + rnd(0.6, 2.2); }
           if (MUS.nextSwell < now) { swell(now + 0.05); MUS.nextSwell = now + rnd(9, 18) * (1 - MUS.inten * 0.5); }
         } else { MUS.nextHb = now + 0.5; }
+      }
+
+      // ===================== ⚔️ боевая музыка: быстрые барабаны, бас и арпеджио, когда за тобой гонятся =====================
+      // «Жар» боя растёт быстро, спадает медленно. У Сердца — успокаивается до умеренного ритма, а не сразу в тишину.
+      function combatThreat() {
+        const me = MR.me; if (!me || me.dead || MR.mode !== 'play' || MR.phase === 'cine' || MR.phase === 'pre' || MR.phase === 'note' || MR.phase === 'train') return 0;
+        let th = 0;
+        for (const e of MR.mons) {
+          if (e.dead || e.sleep || (e.k === 'drug' && !e.reveal)) continue;
+          const dx = me.x - e.x, dy = me.y - e.y, d = Math.hypot(dx, dy); if (d > 11 * T) continue;
+          const cl = MR.net === 'cli', vx = (cl ? e.svx : e.vx) || 0, vy = (cl ? e.svy : e.vy) || 0;
+          const toward = (vx * dx + vy * dy) / ((Math.hypot(vx, vy) || 1) * (d || 1));
+          th += (d < 6 * T ? 0.2 : 0.08) * (toward > 0.5 ? 1.4 : 1) * (MDEF[e.k].boss ? 3 : MDEF[e.k].special ? 1.5 : 1);
+        }
+        const E = MR.pale; if (E && E.st !== 'gone' && E.st !== undefined) { const d = dist(E.x, E.y, me.x, me.y); if (d < 10 * T) th += 0.6 * (1 - d / (10 * T)) + (E.st === 'grab' ? 0.6 : 0); }
+        if (MR.boss && !MR.boss.dead) th += 0.35;
+        if (MUS.hurtT > 0) th += 0.35;
+        if (Math.hypot(me.vx || 0, me.vy || 0) > (me.spd || 120) * 0.75 && th > 0.15) th += 0.15;   // убегаешь
+        if (inBase(me) || lightAt(me.x, me.y)) th *= 0.4;   // у Сердца спокойнее
+        return Math.min(1, th);
+      }
+      function combatHeat(dt) {
+        const me = MR.me;
+        if (me && !me.dead) { if (MUS.lastHp && me.hp < MUS.lastHp - 0.5) MUS.hurtT = 2.5; MUS.lastHp = me.hp; }
+        MUS.hurtT = Math.max(0, MUS.hurtT - dt);
+        const th = combatThreat();
+        if (MUS.heat > 0.6) { MUS.after = 0.32; MUS.hold = 8; }     // после сильного боя музыка остывает не до конца: ~8 с умеренный ритм
+        else if ((MUS.hold = (MUS.hold || 0) - dt) <= 0) MUS.after = Math.max(0, MUS.after - dt * 0.016);   // …а потом ещё секунд 20 стихает
+        const tgt = MR.mode === 'play' ? Math.max(th, MUS.after) : 0;
+        if (tgt > MUS.heat) MUS.heat += (tgt - MUS.heat) * Math.min(1, dt * 5);
+        else MUS.heat = Math.max(tgt, MUS.heat - dt * 0.13);
+      }
+      // ля минор: Am — F — G — E
+      const CMB_CH = [57, 53, 55, 52];
+      let whiteBuf = null;
+      function wNoise(t, dur, vol, type, f, q = 1) {
+        const ctx = MUS.ctx; if (!whiteBuf) { whiteBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const d = whiteBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+        const s = ctx.createBufferSource(), fl = ctx.createBiquadFilter(), g = ctx.createGain(); s.buffer = whiteBuf; fl.type = type; fl.frequency.value = f; fl.Q.value = q;
+        g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); s.connect(fl); fl.connect(g); g.connect(MUS.cmbG); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
+      }
+      function kick(t, v) {
+        const ctx = MUS.ctx, o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(48, t + 0.12);
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.42 * v, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22); o.connect(g); g.connect(MUS.cmbG); o.start(t); o.stop(t + 0.25);
+        wNoise(t, 0.02, 0.12 * v, 'highpass', 2500);   // щелчок — чтобы бочку было слышно на телефоне
+      }
+      function snare(t, v) { wNoise(t, 0.16, 0.2 * v, 'bandpass', 1900, 0.8); tone(185, t, 0.09, 'triangle', 0.09 * v, MUS.cmbG, 0.002); }
+      function hat(t, v, open) { wNoise(t, open ? 0.12 : 0.035, (open ? 0.07 : 0.05) * v, 'highpass', 7500); }
+      function combatStep(t, H) {
+        const st = MUS.cStep % 64, bar = Math.floor(st / 16), s16 = st % 16, r = CMB_CH[bar], v = 0.55 + H * 0.45;
+        // бас: восьмые, при сильном бое — шестнадцатые с октавой
+        if (H > 0.7 || s16 % 2 === 0) {
+          const n = r - 12 + ((H > 0.7 && s16 % 2) || s16 % 8 === 6 ? 12 : 0);
+          const o = tone(hz(n), t, 0.16, 'sawtooth', 0.055 * v, MUS.cmbG, 0.004);
+          o.detune.value = rnd(-4, 4);
+        }
+        // барабаны
+        if (H > 0.3) {
+          if (s16 === 0 || s16 === 8 || (H > 0.7 && (s16 === 4 || s16 === 12)) || (H > 0.5 && s16 === 10)) kick(t, v);
+          if (H > 0.5 && (s16 === 4 || s16 === 12)) snare(t, v);
+          if (H > 0.85 && bar === 3 && s16 >= 12) snare(t, v * 0.7);   // сбивка в конце круга
+          if (s16 % 2 === 0 || H > 0.65) hat(t, v * (s16 % 4 === 2 ? 1 : 0.7), s16 === 14 && H > 0.6);
+        } else if (s16 === 0 || s16 === 8) kick(t, v * 0.6);
+        // тревожное арпеджио
+        if (H > 0.55) { const ar = [24, 27, 31, 36, 31, 27, 24, 19], n = r + ar[s16 % 8] + (bar === 3 && ar[s16 % 8] === 27 ? 1 : 0); tone(hz(n), t, 0.11, 'square', 0.016 * v, MUS.cmbG, 0.003, 0.25); }
+        // тарелка в начале круга
+        if (H > 0.75 && st === 0) wNoise(t, 1.2, 0.08, 'highpass', 5000);
       }
       // ===================== ✨ НОЧИ В МУРИНО · анимации и «сочность»: падающие деревья, трупы, пыль, светлячки, рывок =====================
       MR.anims = []; MR.dmgNums = []; MR.flies = [];
@@ -24205,7 +24276,7 @@
       }
       bindInput();
       // для проверок
-      window.MRG = { mothLight, MUS, dashStart, hitMon, removeNode, saveRun, loadRun, saveInfo, skipIntro: () => { if (MR.phase === 'cine') { MR.cine.t = CINE_T; introLand(); } if (MR.phase === 'pre') preSkip(); if (MR.phase === 'note') noteDone(); }, MN, makeCfg, mnHostIn, cliStep, MR, M: () => M, R, T, CX, CY, BLD, MDEF, NDEF, step, startRun, spawnMon, nightStart, dawn, dayStart, placeBld, canPlace, feedHeart, craft, paleInit, paleAppear, qteTap, learn, openPanel, closePanel, buildOpen, buildTap, lightR, lightAt, draw, hud, gameOver, victory, trainArrive, callTrain, survUpd, FH, FW, FP, rebuildFields, unlockBp, heartUp, upgradeBld, nodeNear, reveal, kick, resize, toWorld };
+      window.MRG = { combatThreat, mothLight, MUS, dashStart, hitMon, removeNode, saveRun, loadRun, saveInfo, skipIntro: () => { if (MR.phase === 'cine') { MR.cine.t = CINE_T; introLand(); } if (MR.phase === 'pre') preSkip(); if (MR.phase === 'note') noteDone(); }, MN, makeCfg, mnHostIn, cliStep, MR, M: () => M, R, T, CX, CY, BLD, MDEF, NDEF, step, startRun, spawnMon, nightStart, dawn, dayStart, placeBld, canPlace, feedHeart, craft, paleInit, paleAppear, qteTap, learn, openPanel, closePanel, buildOpen, buildTap, lightR, lightAt, draw, hud, gameOver, victory, trainArrive, callTrain, survUpd, FH, FW, FP, rebuildFields, unlockBp, heartUp, upgradeBld, nodeNear, reveal, kick, resize, toWorld };
 
     })();
     // ===== /🌲 конец игры =====

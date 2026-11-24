@@ -6092,6 +6092,8 @@
         tg.ready();
         tg.expand();
         if (tgv('7.7')) tg.disableVerticalSwipes();
+        // полный экран: только на телефонах и планшетах (на компьютере окно мешало бы)
+        if (tgv('8.0') && /^(ios|android|android_x)$/.test(tg.platform || '') && !tg.isFullscreen) { try { tg.requestFullscreen(); } catch (_) {} }
         tg.onEvent('viewportChanged', setAppHeight);
         setAppHeight();
       } catch (_) {}

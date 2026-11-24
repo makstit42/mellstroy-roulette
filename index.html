@@ -14147,6 +14147,7 @@
     // ===================== 🚔 ОТБЕЙСЯ ОТ ИНТЕРПОЛА =====================
     (function () {
       // ===================== 🚔 ОТБЕЙСЯ ОТ ИНТЕРПОЛА · ядро и карта Бурмалдограда =====================
+      const NPC_BAN = new Set(['legendary_20']);   // «Друг» — монстр в Мурино, не NPC
       const T = 32, MW = 112, MH = 112, WORLD_W = MW * T, WORLD_H = MH * T;
       const G = { GRASS: 0, ROAD: 1, WALK: 2, PLAZA: 3, WOOD: 4, TILE: 5, CONC: 6, WATER: 7, DIRT: 8, CARPET: 9, SAND: 10, MARBLE: 11, BTILE: 12, LOT: 13, WTILE: 14, HUB: 15, MAT: 16, VOID: 17 };
       const HUBO = { x: 2, y: 2, w: 42, h: 30 };          // Мелстрой Хаб: где лежит уровень-база в сетке карты
@@ -16662,7 +16663,7 @@
       }
       function newCitizen(x, y) {
         const used = new Set(A.npc.map(n => n.mid)); if (A.petMid) used.add(A.petMid);
-        const pool = MEMES.filter(m => !m.clip && !used.has(m.id) && MEME.posters[m.id]); if (!pool.length) return null;
+        const pool = MEMES.filter(m => !m.clip && !NPC_BAN.has(m.id) && !used.has(m.id) && MEME.posters[m.id]); if (!pool.length) return null;
         const m = pool[Math.floor(Math.random() * pool.length)];
         const n = { npc: 1, mid: m.id, name: m.name, ph: Math.random() * 6, img: null, crop: null, sayT: -rnd(0, 4), say: '', r: 9, face: 1, b: -1, x, y };
         A.npc.push(n);
@@ -17415,8 +17416,8 @@
         if (A.npcHub) return A.npcHub;
         const spots = [['coach', 1.8, 4.7], ['clerk', 16.5, 4.6], ['seller', 34.5, 3.1], ['range', 30.9, 11.2], ['hammam', 2.9, 10.75], ['hammam', 5.7, 10.75], ['hammam', 5.4, 14.4, 1], ['hammam', 9.4, 13.3]];
         const used = new Set(A.npcCity ? A.npcCity.map(n => n.mid) : []); if (A.petMid) used.add(A.petMid);
-        let pool = MEMES.filter(m => !m.clip && !used.has(m.id) && MEME.posters[m.id]);
-        if (pool.length < spots.length + 4) pool = MEMES.filter(m => !m.clip && MEME.posters[m.id] && m.id !== A.petMid);
+        let pool = MEMES.filter(m => !m.clip && !NPC_BAN.has(m.id) && !used.has(m.id) && MEME.posters[m.id]);
+        if (pool.length < spots.length + 4) pool = MEMES.filter(m => !m.clip && !NPC_BAN.has(m.id) && MEME.posters[m.id] && m.id !== A.petMid);
         pool = pool.sort(() => Math.random() - 0.5).slice(0, spots.length + 4);
         A.npcHub = pool.map((m, k) => {
           const n = { npc: 1, mid: m.id, name: m.name, ph: Math.random() * 6, img: null, crop: null, sayT: -rnd(0, 6), say: '', r: 9, face: Math.random() < 0.5 ? -1 : 1, b: -1 };
@@ -18406,7 +18407,7 @@
         if (IP.netCli) { netCliTeam(); return; }
         if (IP.netRun && IP.netHost) netTeamAdd(IP.team);
         const n = Math.min(botCount(), TEAM_MAX - IP.team.length); if (n <= 0) return;
-        const pool = MEMES.filter(m => !m.clip && MEME.posters[m.id] && m.id !== A.petMid).sort(() => Math.random() - 0.5);
+        const pool = MEMES.filter(m => !m.clip && !NPC_BAN.has(m.id) && MEME.posters[m.id] && m.id !== A.petMid).sort(() => Math.random() - 0.5);
         for (let b = 0; b < n; b++) {
           const k = IP.team.length, m = pool[b], q = newPlayer(), h = CINE_HOP[k];
           Object.assign(q, { bot: 1, slot: k, col: TEAM_COL[k], name: m ? m.name : 'Бот ' + k, mid: m && m.id, img: null, crop: null, inp: { x: 0, y: 0 }, ai: { ft: 0, F: null, fk: '', st: 0 }, x: me.x + h[0], y: me.y + h[1], inv: 1.5 });
@@ -19849,7 +19850,7 @@
             [28, 81.75, 'bench', -1], [43, 74.6, 'cashier', -1], [55, 80.6, 'cashier', -1], [76.5, 98, 'home', 15]
           ];
           const walkers = 26;
-          const pool = MEMES.filter(m => !m.clip && m.id !== mid).sort(() => Math.random() - 0.5).slice(0, spots.length + walkers);
+          const pool = MEMES.filter(m => !m.clip && !NPC_BAN.has(m.id) && m.id !== mid).sort(() => Math.random() - 0.5).slice(0, spots.length + walkers);
           A.npcCity = pool.map((m, k) => {
             const n = { npc: 1, mid: m.id, name: m.name, ph: Math.random() * 6, img: null, crop: null, sayT: -rnd(0, 6), say: '', r: 9, face: Math.random() < 0.5 ? -1 : 1, b: -1 };
             if (k < spots.length) { const s = spots[k]; Object.assign(n, { x: s[0] * T, y: s[1] * T, role: s[2], b: s[3], swim: s[4] || 0 }); }
@@ -20083,6 +20084,7 @@
     // ===================== 🌲 НОЧИ В МУРИНО =====================
     (function () {
       // ===================== 🌲 НОЧИ В МУРИНО · ядро: состояние, лес, туман, пути =====================
+      const NPC_BAN = new Set(['legendary_20']);   // «Друг» — монстр, не NPC
       const T = 32, MW = 96, MH = 96, CX = 48, CY = 48, WW = MW * T, WH = MH * T, TAU = Math.PI * 2;
       const G = { GRASS: 0, FOREST: 1, PATH: 2, WATER: 3, SAND: 4, CONC: 5, RAIL: 6, PLAT: 7, CAMP: 8, SWAMP: 9, FLOOR: 10 };
       const S_NONE = 0, S_WALL = 1, S_PROP = 2, S_WATER = 3;          // WALL держит и пули; PROP и вода — только ноги
@@ -20977,8 +20979,29 @@
         crawler: { name: 'Ползун', r: 10, hp: 28, sp: 82, dmg: 9, bdmg: 7, cd: 1, gold: 9, dig: 1 },
         screamer: { name: 'Визгун', r: 11, hp: 20, sp: 112, dmg: 26, bdmg: 45, cd: 0, gold: 9, boom: 1 },
         flyer: { name: 'Летун', r: 9, hp: 13, sp: 140, dmg: 7, bdmg: 0, cd: 0.8, gold: 7, fly: 1 },
-        boss: { name: 'Мать Бледных', r: 30, hp: 1100, sp: 50, dmg: 30, bdmg: 60, cd: 1.6, gold: 400, boss: 1, reach: 14 }
+        boss: { name: 'Мать Бледных', r: 30, hp: 1100, sp: 50, dmg: 30, bdmg: 60, cd: 1.6, gold: 400, boss: 1, reach: 14 },
+        drug: { name: 'Друг', r: 12, hp: 60, sp: 95, dmg: 20, bdmg: 12, cd: 1.1, gold: 35, drug: 1, reach: 8 }   // футаж «Друг»: прикидывается человеком
       };
+      // «Друг»: кадры из футажа (зелёный фон вырезан) и его голос
+      const DRUG_MID = 'legendary_20', DRUG = { frames: [], buf: null, loading: false };
+      function drugLoad() {
+        if (DRUG.loading || typeof memeUrl !== 'function') return; DRUG.loading = true;
+        try { sfxLoad(memeUrl(DRUG_MID)).then(b => { DRUG.buf = b; }).catch(() => {}); } catch (e) {}
+        const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto'; v.src = memeUrl(DRUG_MID);
+        const ts = [0.3, 0.7, 1.1, 1.5, 1.7, 1.9, 2.1, 2.35, 2.6, 2.85]; let k = 0;
+        const grab = () => {
+          try { const cv = document.createElement('canvas'); cv.width = 380; cv.height = 260; memeDrawFrame(cv.getContext('2d', { willReadFrequently: true }), v); DRUG.frames[k] = cv; } catch (e) {}
+          k++; if (k < ts.length) v.currentTime = Math.min(ts[k], (v.duration || 3) - 0.05); else { v.removeAttribute('src'); v.load(); }
+        };
+        v.addEventListener('seeked', grab);
+        v.addEventListener('loadedmetadata', () => { v.currentTime = ts[0]; }, { once: true });
+      }
+      function drugVoice(e) {
+        if (!soundEnabled || !DRUG.buf || !MR.me) return;
+        const d = dist(e.x, e.y, MR.me.x, MR.me.y); if (d > 12 * T) return;
+        try { const ctx = getAudioCtx(), s = ctx.createBufferSource(), g = ctx.createGain(); s.buffer = DRUG.buf; g.gain.value = clamp(1.1 - d / (12 * T), 0.15, 1); s.connect(g); g.connect(ctx.destination); s.start(); } catch (er) {}
+      }
+      function drugReveal(e) { if (e.reveal) return; e.reveal = 1; e.revT = 0; drugVoice(e); shake(3); }
       const SURV = {
         builder: { ico: '🔨', name: 'Строитель', desc: 'Чинит постройки, стройка дешевле' },
         cook: { ico: '🍳', name: 'Повар', desc: 'Варит рагу, голод медленнее' },
@@ -21169,6 +21192,7 @@
         for (const e of MR.mons) {
           if (e.dead || e.dig > 0 || e.spawnT > 0 || e.sun > 0) continue;
           const d2 = (e.x - p.x) ** 2 + (e.y - p.y) ** 2;
+          if (e.k === 'drug' && !e.reveal && d2 > (2.5 * T) ** 2) continue;
           if (d2 < bd && (!isNight() || d2 < (3.5 * T) ** 2 || lightAt(e.x, e.y) || lampSees(p, e.x, e.y, 10) || e.flash > 0 || alivePl().some(q => q !== p && dist(q.x, q.y, e.x, e.y) < 3 * T)) && losClear(p.x, p.y, e.x, e.y)) { bd = d2; best = e; }
         }
         return best;
@@ -21431,9 +21455,10 @@
           if (L || lamp) { e.hp -= (lamp ? 10 : 7) * dt; e.flash = Math.max(e.flash, 0.04); e.fleeT = 0.7; e.fx = L ? L.x : lamp.x; e.fy = L ? L.y : lamp.y; if (e.hp <= 0) { killMon(e, null); return; } }
         }
         if (D.boss) bossTick(e, dt);
+        if (D.drug) { if (e.reveal) e.revT = (e.revT || 0) + dt; else { const q = nearestPl(e.x, e.y, 3 * T); if (q || e.hp < e.hpMax) drugReveal(e); else if (Math.random() < dt * 0.25) floatText(e.x, e.y - 86, tr('Друг…'), '#e2e8f0', 12, 1.4); } }
         e.think -= dt; if (e.think <= 0) { e.think = rnd(0.3, 0.5); monThink(e); }
         const tl = M.g[idx(clamp(tileOf(e.x), 0, MW - 1), clamp(tileOf(e.y), 0, MH - 1))];
-        const spd = e.sp * (e.slow > 0 ? 0.5 : 1) * (tl === G.SWAMP && !D.fly ? 0.65 : 1) * (MR.nightType === 'final' ? 1.1 : 1);
+        const spd = e.sp * (D.drug ? (e.reveal ? 1.55 : 0.55) : 1) * (e.slow > 0 ? 0.5 : 1) * (tl === G.SWAMP && !D.fly ? 0.65 : 1) * (MR.nightType === 'final' ? 1.1 : 1);
         e.slow = Math.max(0, e.slow - dt);
         let gx, gy, nextB = null;
         const t = e.tgt && !e.tgt.dead && !e.tgt.down && !e.tgt.boarded && e.tgt.st !== 'dead' ? e.tgt : null;
@@ -21465,7 +21490,7 @@
           const d = dist(e.x, e.y, t.x, t.y);
           if (d < e.r + (t.r || 10) + (D.reach || 5)) {
             if (D.boom) { explode(e); return; }
-            if (e.cd <= 0) { e.cd = D.cd; e.lunge = 1; e.ltx = t.x; e.lty = t.y - 30; if (t.st) hurtSurv(t, e.dmg); else hurtPlayer(t, e.dmg, e); }
+            if (e.cd <= 0 && (!D.drug || e.reveal)) { e.cd = D.cd; e.lunge = 1; e.ltx = t.x; e.lty = t.y - 30; if (t.st) hurtSurv(t, e.dmg); else hurtPlayer(t, e.dmg, e); }
             if (D.reach || d < e.r + (t.r || 10)) gx = undefined;
           }
         }
@@ -21660,6 +21685,7 @@
       function pickType(n) {
         const ty = MR.nightType, pool = [['runt', 10]];
         if (n >= 2) pool.push(['neck', 6]); if (n >= 3) pool.push(['crawler', ty === 'fog' ? 9 : 4]); if (n >= 4) pool.push(['screamer', 3]);
+        if (n >= 3 && MR.mons.filter(e => e.k === 'drug' && !e.dead).length < 2) pool.push(['drug', 1.3]);
         if (n >= 5) pool.push(['brute', (2 + n * 0.12) * (ty === 'blood' ? 2 : 1)]); if (n >= 6) pool.push(['flyer', 3]);
         let tot = 0; for (const p of pool) tot += p[1]; let r = Math.random() * tot; for (const p of pool) { r -= p[1]; if (r <= 0) return p[0]; } return 'runt';
       }
@@ -22392,7 +22418,7 @@
           RES_KEYS.map(k => p.inv[k] || 0), p.radio.length, mask(SK_IDS, k => p.sk[k]), p.pts, R0(p.spd)];
       }
       function monRow(e) {
-        const f = (e.sleep ? 1 : 0) | (e.dig > 0 ? 2 : 0) | (e.spawnT > 0 ? 4 : 0) | (e.sun > 0 ? 8 : 0) | (e.held > 0 ? 16 : 0) | (e.flash > 0 ? 32 : 0) | (e.guard ? 64 : 0);
+        const f = (e.sleep ? 1 : 0) | (e.dig > 0 ? 2 : 0) | (e.spawnT > 0 ? 4 : 0) | (e.sun > 0 ? 8 : 0) | (e.held > 0 ? 16 : 0) | (e.flash > 0 ? 32 : 0) | (e.guard ? 64 : 0) | (e.reveal ? 128 : 0);
         return [e.id, MK.indexOf(e.k), R0(e.x), R0(e.y), Math.max(0, R0(e.hp / e.hpMax * 100)), f, e.face, R0(e.lunge * 10), R0(e.ltx || 0), R0(e.lty || 0)];
       }
       function mnSnap() {
@@ -22479,7 +22505,7 @@
           if (!e) e = { id: a[0], k, r: MDEF[k].r, x: a[2], y: a[3], hpMax: 1, ph: Math.random() * 10, walk: 0, vx: 0, vy: 0, face: 1, flash: 0, lunge: 0, dig: 0, spawnT: 0, sun: 0, held: 0 };
           const ox = e.nx === undefined ? a[2] : e.nx, oy = e.ny === undefined ? a[3] : e.ny;
           e.svx = (a[2] - ox) * 15; e.svy = (a[3] - oy) * 15; e.nx = a[2]; e.ny = a[3]; e.st0 = now;
-          e.hp = a[4] / 100; const f = a[5]; e.sleep = f & 1 ? 1 : 0; e.dig = f & 2 ? 1 : 0; e.spawnT = f & 4 ? 0.3 : 0; e.sun = f & 8 ? 0.6 : 0; e.held = f & 16 ? 1 : 0; if (f & 32) e.flash = 0.09; e.guard = f & 64 ? 1 : 0;
+          e.hp = a[4] / 100; const f = a[5]; e.sleep = f & 1 ? 1 : 0; e.dig = f & 2 ? 1 : 0; e.spawnT = f & 4 ? 0.3 : 0; e.sun = f & 8 ? 0.6 : 0; e.held = f & 16 ? 1 : 0; if (f & 32) e.flash = 0.09; e.guard = f & 64 ? 1 : 0; if (f & 128 && !e.reveal) { e.reveal = 1; e.revT = 0; drugVoice(e); } if (e.reveal) e.revT = (e.revT || 0) + 1 / 15;
           e.face = a[6]; e.lunge = a[7] / 10; e.ltx = a[8]; e.lty = a[9]; L.push(e);
         }
         MR.mons = L; MR.boss = s.boss ? L.find(e => e.id === s.boss) || null : null;
@@ -22942,8 +22968,8 @@
         img(MEME.posters[o.mid]).then(im => { if (!im) return; rec.img = im; rec.crop = cropAlpha(im); for (const w of rec.wait) { w.img = im; w.crop = rec.crop; } rec.wait = []; });
       }
       function memePool(exclude, n) {
-        const own = heroList().map(it => { try { return getPlateMeme(it); } catch (e) { return null; } }).filter(m => m && m.id !== exclude);
-        const rest = MEMES.filter(m => !m.clip && m.id !== exclude && !own.some(o => o.id === m.id)).sort(() => Math.random() - 0.5);
+        const own = heroList().map(it => { try { return getPlateMeme(it); } catch (e) { return null; } }).filter(m => m && m.id !== exclude && !NPC_BAN.has(m.id));
+        const rest = MEMES.filter(m => !m.clip && !NPC_BAN.has(m.id) && m.id !== exclude && !own.some(o => o.id === m.id)).sort(() => Math.random() - 0.5);
         return own.concat(rest).slice(0, n);
       }
       function heroMid() { const it = heroItem(); try { return it ? getPlateMeme(it).id : null; } catch (e) { return null; } }
@@ -23154,7 +23180,8 @@
         if (e.sun > 0) a = Math.min(1, e.sun / 1.2);
         if (e.dig > 0) a = 0.45;
         if (a < 1) c.globalAlpha = Math.max(0, a);
-        if (e.k === 'flyer') drawFlyer(c, e, fl);
+        if (e.k === 'drug') drawDrug(c, e, fl);
+        else if (e.k === 'flyer') drawFlyer(c, e, fl);
         else if (e.k === 'neck') drawNeck(c, e, fl);
         else {
           const sp = monSprite(e.k), s2 = fl ? flashSprite('mon_' + e.k, sp) : sp;
@@ -23165,6 +23192,17 @@
         c.globalAlpha = 1;
         if (e.sleep) { c.font = '800 12px system-ui'; c.fillStyle = 'rgba(226,232,240,0.85)'; c.textAlign = 'center'; c.fillText('z', e.x + 12, e.y - 44 - (MR.t * 8 % 10)); }
         else if (e.hp < e.hpMax && !D.boss && e.sun <= 0) { const w = e.r * 2.4, hy = e.y - (e.k === 'brute' ? 70 : e.k === 'neck' ? 84 : e.k === 'crawler' ? 30 : 48); c.fillStyle = 'rgba(0,0,0,0.55)'; c.fillRect(e.x - w / 2, hy, w, 3.5); c.fillStyle = '#f87171'; c.fillRect(e.x - w / 2, hy, w * Math.max(0, e.hp / e.hpMax), 3.5); }
+      }
+      function drawDrug(c, e, fl) {
+        const F = DRUG.frames, i = !e.reveal ? Math.floor(MR.t * 2 + e.ph) % 3 : Math.min(9, 3 + Math.floor((e.revT || 0) * 6)) - (e.revT > 1.2 ? Math.floor(MR.t * 6) % 3 : 0), cv = F[i] || F[0];
+        if (!cv) { blitFlip(c, monSprite('runt'), e.x, e.y, e.face < 0); return; }
+        const h = e.reveal ? 84 : 64, w = h * 380 / 260;
+        shadow(c, e.x, e.y, 14, 4.5, 0.3);
+        c.save(); c.translate(e.x, e.y); if (e.face < 0) c.scale(-1, 1);
+        if (e.reveal) c.rotate(Math.sin(MR.t * 9 + e.ph) * 0.06);
+        c.drawImage(cv, -w / 2, -h, w, h);
+        if (fl) { c.globalCompositeOperation = 'source-atop'; c.globalAlpha = 0.5; c.fillStyle = '#fff'; c.fillRect(-w / 2, -h, w, h); }
+        c.restore();
       }
       function drawPale(c, E) {
         if (!E || E.st === 'gone') return;
@@ -23691,7 +23729,7 @@
         try { syncTelegramChrome(); } catch (e) {}
         try { musicDuck('mr', true); } catch (e) {}
         getAudioCtx();
-        resize(); await loadHero();
+        resize(); await loadHero(); drugLoad();
         MR.net = ''; startRun(true); MR.dark = 0.82; MR.phase = 'night';
         renderStart(); screen('mrStart');
         kick(); try { haptic('light'); } catch (e) {}

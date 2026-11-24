@@ -23182,7 +23182,7 @@
           if (under) { f.exponentialRampToValueAtTime(650, now + 0.45); Q.setTargetAtTime(0.85, now, 0.15); MUS.wobG.gain.setTargetAtTime(70, now, 0.3); }
           else { f.exponentialRampToValueAtTime(18000, now + 0.4); Q.setTargetAtTime(0.7, now, 0.15); MUS.wobG.gain.setTargetAtTime(0, now, 0.1); }
         }
-        const vol = musicVolume() * 1.7 * (under ? 0.75 : 1);
+        const vol = musicVolume() * 1.7 * (under ? 0.75 : 1) * (MV.duck ? 0.3 : 1);
         MUS.out.gain.setTargetAtTime(vol, now, 0.4);
         combatHeat(0.09);
         const H = MUS.heat; MUS.cmbG.gain.setTargetAtTime(Math.min(1, H * 1.5), now, H > MUS.cmbShown ? 0.15 : 0.8); MUS.cmbShown = H;
@@ -23392,6 +23392,121 @@
         const g = c.createRadialGradient(cv.width / 2, cv.height / 2, cv.height * 0.3, cv.width / 2, cv.height / 2, cv.height * 0.75);
         g.addColorStop(0, 'rgba(160,0,0,0)'); g.addColorStop(1, `rgba(160,0,0,${0.45 * k})`); c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height);
       }
+      // ===================== 🗣️ НОЧИ В МУРИНО · мемы говорят, когда подходишь (как в Интерполе) =====================
+      // Выжившие и боты-напарники: подошёл ближе ~4 клеток — мем оживает (видео + звук), до трёх сразу.
+      // Картинка — из видео без звука (можно без касания на айфоне), звук — из того же файла через Web Audio:
+      // у каждого своя громкость, ближе — громче. Прослушал — замолкает, пока не отойдёшь и не вернёшься.
+      const MV = { slots: [], max: 3, cd: 0.3, scanT: 0, aud: new Map(), count: 0, duck: 0 };
+      const MV_ON = 4.2 * T, MV_OFF = 5.8 * T, MV_PRE = 7.5 * T;
+      function mvAudio(url) {
+        let p = MV.aud.get(url);
+        if (p) { MV.aud.delete(url); MV.aud.set(url, p); return p; }
+        p = fetch(url).then(r => r.arrayBuffer()).then(ab => new Promise((ok, err) => getAudioCtx().decodeAudioData(ab, ok, err))).catch(() => null);
+        MV.aud.set(url, p);
+        while (MV.aud.size > 6) MV.aud.delete(MV.aud.keys().next().value);
+        return p;
+      }
+      function mvSlot() {
+        const s = { v: null, cv: mkCanvas(190, 130), ctx: null, n: null, src: null, g: null, buf: null, t: 0, t0: 0, off: 0, gen: 0, syncT: 0 };
+        s.ctx = s.cv.getContext('2d', { willReadFrequently: true });
+        const v = document.createElement('video');
+        v.playsInline = true; v.setAttribute('playsinline', ''); v.muted = true; v.defaultMuted = true; v.setAttribute('muted', ''); v.preload = 'auto';
+        v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none;z-index:-1';
+        document.body.appendChild(v);
+        v.onended = () => { if (s.n) mvEnd(s, true); };
+        s.v = v; MV.slots.push(s);
+        return s;
+      }
+      const mvGain = (d) => { const c = MV.count, mix = c <= 1 ? 1 : c === 2 ? 0.82 : 0.7; return 0.95 * mix * clamp(1.15 - d / (MV_OFF * 1.05), 0.28, 1); };
+      function mvPlay(n) {
+        const s = MV.slots.find(q => !q.n) || (MV.slots.length < MV.max ? mvSlot() : null);
+        if (!s) return false;
+        s.n = n; n.mv = s; s.t = 0; s.gen++; s.ctx._mf = null; s.buf = null; s.syncT = 0.5;
+        const v = s.v, gen = s.gen;
+        setMemeSrc(v, n.mid); v.muted = true;
+        try { v.currentTime = 0; } catch (e) {}
+        v.play().catch(() => {});
+        if (soundEnabled) mvAudio(memeUrl(n.mid)).then(b => { if (s.gen === gen && b) s.buf = b; });
+        return true;
+      }
+      // звук включаем, когда видео реально пошло — с того же места, чтобы губы совпадали
+      function mvTickSlot(s, dt, d) {
+        s.t += dt;
+        const v = s.v;
+        if (!s.src && s.buf && soundEnabled && v.readyState >= 2 && !v.paused && v.currentTime > 0) {
+          try {
+            const ctx = getAudioCtx(), src = ctx.createBufferSource(), g = ctx.createGain();
+            src.buffer = s.buf; g.gain.value = mvGain(d); src.connect(g); g.connect(ctx.destination);
+            s.off = Math.min(v.currentTime, Math.max(0, s.buf.duration - 0.05)); s.t0 = ctx.currentTime; src.start(0, s.off);
+            src.onended = () => { if (s.src === src && s.n) mvEnd(s, true); };
+            s.src = src; s.g = g;
+          } catch (e) {}
+        }
+        if (s.g) {
+          const gv = mvGain(d);
+          if (Math.abs((s.gv || 0) - gv) > 0.03) { s.gv = gv; try { s.g.gain.setTargetAtTime(gv, getAudioCtx().currentTime, 0.12); } catch (e) {} }
+          s.syncT -= dt;   // видео подвисло и отстало от звука — догоняем
+          if (s.syncT <= 0) { s.syncT = 1; try { const pos = getAudioCtx().currentTime - s.t0 + s.off; if (pos < (v.duration || 1e9) - 0.1 && Math.abs(v.currentTime - pos) > 0.3) v.currentTime = pos; } catch (e) {} }
+        }
+      }
+      function mvEnd(s, done) {
+        const n = s.n; if (!n) return;
+        if (done) n.heard = 1;
+        n.mv = null; s.n = null; s.gen++; s.buf = null;
+        try { s.v.pause(); } catch (e) {}
+        if (s.src) {
+          const src = s.src, g = s.g; s.src = null; s.g = null; s.gv = 0;
+          try { const t = getAudioCtx().currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.linearRampToValueAtTime(0.0001, t + 0.12); src.stop(t + 0.14); } catch (e) {}
+        }
+        MV.cd = Math.max(MV.cd, done ? 0.5 : 0.15);
+      }
+      function mvStop() { for (const s of MV.slots) mvEnd(s, false); MV.count = 0; MV.duck = 0; }
+      function mvRelease() { mvStop(); for (const s of MV.slots) { try { s.v.removeAttribute('src'); s.v.load(); } catch (e) {} } MV.aud.clear(); for (const n of mvList()) n.heard = 0; }
+      // кто может говорить: выжившие и боты-напарники
+      function mvList() { const L = []; for (const s of MR.surv || []) if (s.mid && s.img && s.st !== 'dead') L.push(s); for (const p of MR.pl || []) if (p.bot && p.mid && p.img && p !== MR.me && !p.dead && !p.boarded) L.push(p); return L; }
+      function mvFarthest(P) { let far = null, fd = -1; for (const s of MV.slots) if (s.n) { const q = (s.n.x - P.x) ** 2 + (s.n.y - P.y) ** 2; if (q > fd) { fd = q; far = s; } } return [far, fd]; }
+      function mvTick(dt) {
+        const P = MR.me;
+        const quiet = !P || MR.mode !== 'play' || MR.paused || !!MR.panel || MR.phase === 'cine' || MR.phase === 'note' || !!MR.qte;
+        if (quiet) { if (MV.slots.some(s => s.n)) mvStop(); return; }
+        MV.scanT -= dt; const scan = MV.scanT <= 0; if (scan) MV.scanT = 0.15;
+        const L = mvList(), d2 = (n) => (n.x - P.x) ** 2 + (n.y - P.y) ** 2;
+        if (scan) for (const n of L) if (n.heard && d2(n) > MV_OFF * MV_OFF) n.heard = 0;
+        let cnt = 0; for (const s of MV.slots) if (s.n) cnt++; MV.count = cnt;
+        for (const s of MV.slots) {
+          const n = s.n; if (!n) continue;
+          const q = d2(n);
+          if (P.dead || n.st === 'dead' || n.dead || n.boarded || q > MV_OFF * MV_OFF) { mvEnd(s, false); continue; }
+          if (s.t > 16 || (s.t > 2.5 && !(s.v.currentTime > 0))) { mvEnd(s, true); continue; }
+          mvTickSlot(s, dt, Math.sqrt(q));
+        }
+        MV.duck = MV.slots.some(s => s.src) ? 1 : 0;
+        MV.cd -= dt;
+        if (!scan || P.dead) return;
+        const pre = [], cand = [];
+        for (const n of L) {
+          if (n.mv || n.heard) continue;
+          const q = d2(n);
+          if (q < MV_PRE * MV_PRE) pre.push([q, n]);
+          if (q < MV_ON * MV_ON) cand.push([q, n]);
+        }
+        if (soundEnabled && pre.length) { pre.sort((a, b) => a[0] - b[0]); for (let i = 0; i < Math.min(3, pre.length); i++) mvAudio(memeUrl(pre[i][1].mid)); }
+        if (!cand.length || MV.cd > 0) return;
+        cand.sort((a, b) => a[0] - b[0]);
+        const [q, c] = cand[0];
+        if (mvPlay(c)) { MV.cd = 0.35; return; }
+        const [far, fd] = mvFarthest(P);   // все трое заняты: подошёл заметно ближе — сменяет самого дальнего
+        if (far && q < fd * 0.3) { mvEnd(far, false); mvPlay(c); MV.cd = 0.35; }
+      }
+      // рисуем живой кадр вместо картинки (та же раскладка, что у постера)
+      function mvDraw(c, n, w, h, bob) {
+        const sl = n.mv; if (!sl || !(sl.v.readyState >= 2 && sl.v.currentTime > 0) || !n.img) return false;
+        const cr = n.crop, k = h / cr.h;
+        memeDrawFrame(sl.ctx, sl.v);
+        c.drawImage(sl.cv, -w / 2 - cr.x * k, -h - bob - cr.y * k, (n.img.naturalWidth || 380) * k, (n.img.naturalHeight || 260) * k);
+        return true;
+      }
+      function mvIcon(c, n, w, top) { if (!n.mv || !n.mv.src) return; c.font = '15px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.globalAlpha = 0.7 + Math.sin(MR.t * 10) * 0.3; c.fillText('🔊', n.x + w * 0.45, top - 2); c.globalAlpha = 1; }
       // ===================== 🖼️ НОЧИ В МУРИНО · кадр, свет, туман, интерфейс, управление =====================
       const A = { hero: null, heroCrop: null, heroMid: null, cache: {} };
       function img(src) { return new Promise(res => { if (!src) return res(null); const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; }); }
@@ -23578,10 +23693,11 @@
         if (p.hurtT > 0 && Math.floor(MR.t * 30) % 2) c.globalAlpha = 0.5;
         if (p.face < 0) c.scale(-1, 1);
         c.rotate(mv ? Math.sin(p.walk) * 0.06 : 0);
-        if (im && cr) { const w = cr.w * (h / cr.h); c.drawImage(im, cr.x, cr.y, cr.w, cr.h, -w / 2, -h - bob, w, h); }
+        if (im && cr) { const w = cr.w * (h / cr.h); if (!(p.bot && mvDraw(c, p, w, h, bob))) c.drawImage(im, cr.x, cr.y, cr.w, cr.h, -w / 2, -h - bob, w, h); }
         else { c.fillStyle = p.bot ? '#38bdf8' : '#facc15'; rr(c, -11, -h + 4 - bob, 22, h - 6, 9); c.fill(); }
         c.restore();
         if (p.dead) return;
+        if (p.bot && cr) mvIcon(c, p, cr.w * (h / cr.h), p.y - h - 26);
         if (!p.down && p.sleepT <= 0 && MR.phase !== 'pre' && MR.phase !== 'note') {
           if (p.act && (p.act.k === 'axe' || p.act.k === 'bar' || p.act.k === 'hand')) {
             const sw = -0.9 + Math.sin(Math.min(1, p.act.t) * Math.PI) * 1.9; c.save(); c.translate(p.x + p.face * 10, p.y - 24); c.scale(p.face, 1); c.rotate(sw); c.font = '18px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(p.act.k === 'axe' ? '🪓' : p.act.k === 'bar' ? '🔧' : '✋', 10, -6); c.restore();
@@ -23606,10 +23722,11 @@
         else c.rotate(mv ? Math.sin(s.walk) * 0.07 : Math.sin(t * 1.3) * 0.03);
         if (s.hurtT > 0) c.globalAlpha = 0.55;
         const bob = mv ? Math.abs(Math.sin(s.walk)) * 3 : 0;
-        if (s.img && cr) { const w = cr.w * (h / cr.h); c.drawImage(s.img, cr.x, cr.y, cr.w, cr.h, -w / 2, -h - bob, w, h); }
+        if (s.img && cr) { const w = cr.w * (h / cr.h); if (!mvDraw(c, s, w, h, bob)) c.drawImage(s.img, cr.x, cr.y, cr.w, cr.h, -w / 2, -h - bob, w, h); }
         else { c.fillStyle = '#a3e635'; rr(c, -10, -h + 4, 20, h - 6, 8); c.fill(); }
         c.restore();
         const top = s.y - h * (s.st === 'lost' ? 0.84 : 1);
+        if (s.crop) mvIcon(c, s, s.crop.w * (h / s.crop.h), top - 14);
         c.font = '14px serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(s.st === 'lost' ? '❗' : SURV[s.type].ico, s.x, top - 10 - (s.st === 'lost' ? Math.abs(Math.sin(MR.t * 3)) * 4 : 0));
         if (s.st === 'home' && s.type === 'shooter' && s.gunA !== undefined) drawGunAt(c, s, s.x + s.face * 5, s.y - 20, s.gunA, 'pistol');
         if (s.hp < s.hpMax) { c.fillStyle = 'rgba(0,0,0,0.55)'; c.fillRect(s.x - 14, top - 2, 28, 3); c.fillStyle = '#86efac'; c.fillRect(s.x - 14, top - 2, 28 * s.hp / s.hpMax, 3); }
@@ -24146,6 +24263,7 @@
         MR.raf = 0; if (!MR.on) return;
         const dt = Math.min(0.05, Math.max(0, (now - MR.last) / 1000)); MR.last = now;
         if (!MUS.on && (MR.musChk = (MR.musChk || 0) - dt) <= 0) { MR.musChk = 1; musStart(); }
+        mvTick(dt);
         if (MR.mode === 'play' && MR.net === 'cli') {
           if (!MR.joy) keysInput(); if (MR.paused || MR.panel) MR.input.x = MR.input.y = 0;
           if (MR.qte) qteStep(dt);
@@ -24190,7 +24308,7 @@
       };
       function closeGame() {
         if (MR.mode === 'play') saveRun();
-        musStop(); droneStop(); buildClose(); mnLeave(); MR.net = '';
+        musStop(); mvRelease(); droneStop(); buildClose(); mnLeave(); MR.net = '';
         if (MR.qte) { MR.qte = null; $('mrQte').hidden = true; }
         MR.on = false; MR.mode = 'menu'; MR.panel = ''; if (MR.raf) cancelAnimationFrame(MR.raf); MR.raf = 0;
         $('mrGame').hidden = true; document.documentElement.classList.remove('mr-open');
@@ -24276,7 +24394,7 @@
       }
       bindInput();
       // для проверок
-      window.MRG = { combatThreat, mothLight, MUS, dashStart, hitMon, removeNode, saveRun, loadRun, saveInfo, skipIntro: () => { if (MR.phase === 'cine') { MR.cine.t = CINE_T; introLand(); } if (MR.phase === 'pre') preSkip(); if (MR.phase === 'note') noteDone(); }, MN, makeCfg, mnHostIn, cliStep, MR, M: () => M, R, T, CX, CY, BLD, MDEF, NDEF, step, startRun, spawnMon, nightStart, dawn, dayStart, placeBld, canPlace, feedHeart, craft, paleInit, paleAppear, qteTap, learn, openPanel, closePanel, buildOpen, buildTap, lightR, lightAt, draw, hud, gameOver, victory, trainArrive, callTrain, survUpd, FH, FW, FP, rebuildFields, unlockBp, heartUp, upgradeBld, nodeNear, reveal, kick, resize, toWorld };
+      window.MRG = { MV, combatThreat, mothLight, MUS, dashStart, hitMon, removeNode, saveRun, loadRun, saveInfo, skipIntro: () => { if (MR.phase === 'cine') { MR.cine.t = CINE_T; introLand(); } if (MR.phase === 'pre') preSkip(); if (MR.phase === 'note') noteDone(); }, MN, makeCfg, mnHostIn, cliStep, MR, M: () => M, R, T, CX, CY, BLD, MDEF, NDEF, step, startRun, spawnMon, nightStart, dawn, dayStart, placeBld, canPlace, feedHeart, craft, paleInit, paleAppear, qteTap, learn, openPanel, closePanel, buildOpen, buildTap, lightR, lightAt, draw, hud, gameOver, victory, trainArrive, callTrain, survUpd, FH, FW, FP, rebuildFields, unlockBp, heartUp, upgradeBld, nodeNear, reveal, kick, resize, toWorld };
 
     })();
     // ===== /🌲 конец игры =====

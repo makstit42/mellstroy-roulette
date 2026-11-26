@@ -5044,7 +5044,6 @@
           </div>
           <label class="toggle-row"><span>📳 Вибрация<small>Отклик при крутках (в Telegram)</small></span><input type="checkbox" id="setHapticsToggle" /></label>
           <label class="toggle-row"><span>🔔 Уведомления от бота<small>Колесо, дуэли, турнир, хаммам, «тебя обогнали»</small></span><input type="checkbox" id="setNotifyToggle" /></label>
-          <label class="toggle-row"><span>⚡ Быстрые крутки<small>Только рулетка: результат сразу. Апгрейд, контракт и колесо — всегда с анимацией</small></span><input type="checkbox" id="setSkipAnimToggle" /></label>
         </div>
       </div>
 
@@ -8683,10 +8682,9 @@
       if (finalRarity.id === 'legendary') legendPrime();
       if (finalMeme) memePrime(finalMeme.id);
 
-      const fast = Boolean(state.settings.skipAnim);
-      const totalHalfTurns = fast ? 2 : (isElite ? 26 : (activeMode === 'super' ? 20 : 14));
+      const totalHalfTurns = isElite ? 18 : (activeMode === 'super' ? 14 : 10);
       const totalAngle = totalHalfTurns * 180;
-      const duration = fast ? 1 : (isElite ? 3900 : (activeMode === 'super' ? 3200 : 2450));
+      const duration = isElite ? 1900 : (activeMode === 'super' ? 1550 : 1200);
 
       renderPlateFace('back', generateItem(activeKind, rollRarity(activeMode), null, '', activeCountry));
 
@@ -8780,7 +8778,7 @@
             autoSpinCount++;
             renderAutoBtn();
             clearTimeout(autoTimer);
-            const pause = finalRarity.id === 'legendary' ? 900 : (state.settings.skipAnim ? 280 : 750);
+            const pause = finalRarity.id === 'legendary' ? 900 : 420;
             autoTimer = setTimeout(autoSpinStep, pause);
           }
         }
@@ -8939,8 +8937,8 @@
       const currentMod = ((startDeg % 360) + 360) % 360;
       let delta = targetAngle - currentMod;
       if (delta < 0) delta += 360;
-      const totalDelta = 360 * 6 + delta;
-      const duration = 3500;
+      const totalDelta = 360 * 5 + delta;
+      const duration = 2100;
       const startTime = performance.now();
       let lastTickBucket = Math.floor(startDeg / 30);
 
@@ -9069,7 +9067,7 @@
       fill.style.width = '0%';
       summary.classList.add('forging');
       void fill.offsetWidth;
-      fill.style.transition = 'width 1.15s cubic-bezier(0.22, 1, 0.36, 1)';
+      fill.style.transition = 'width 0.75s cubic-bezier(0.22, 1, 0.36, 1)';
       fill.style.width = '100%';
 
       banner.className = 'result-banner win';
@@ -9077,7 +9075,7 @@
       taskProgress('contract');
       updateAllUI();
 
-      [0, 150, 310, 480, 660, 860].forEach((ms, i) => {
+      [0, 100, 200, 310, 430, 560].forEach((ms, i) => {
         setTimeout(() => playTone(260 + i * 65, 0.05, 'triangle', 0.065), ms);
       });
 
@@ -9113,7 +9111,7 @@
         }
 
         updateAllUI();
-      }, 1200);
+      }, 800);
     }
 
     // Продажа мемов
@@ -10900,8 +10898,8 @@
       const curMod = ((startRot % 360) + 360) % 360;
       let delta = desiredMod - curMod;
       if (delta < 0) delta += 360;
-      const totalDelta = 360 * 7 + delta;
-      const duration = 5200;
+      const totalDelta = 360 * 6 + delta;
+      const duration = 3200;
       const startTime = performance.now();
       let lastSectorIdx = -1;
 
@@ -12023,7 +12021,7 @@
     function mdSpin(d, replay) {
       const needle = document.getElementById('mdNeedle');
       const final = 360 * 6 + d.roll * 360;
-      const dur = replay ? 3500 : 5500;
+      const dur = replay ? 2300 : 3500;
       const token = (MD.spinToken = (MD.spinToken || 0) + 1);
       let start = 0, lastTick = -1, done = false;
       MD.animating = true;
@@ -24885,7 +24883,6 @@
       document.getElementById('setGlassToggle').checked = state.settings.glass !== false;
       renderSaveStatus();
 
-      document.getElementById('setSkipAnimToggle').checked = Boolean(state.settings.skipAnim);
       document.getElementById('setSoundToggle').checked = state.settings.sound !== false;
       document.getElementById('setHapticsToggle').checked = state.settings.haptics !== false;
       document.getElementById('setMusicToggle').checked = Boolean(state.settings.music);
@@ -24959,6 +24956,11 @@
 
     // ---------- история обновлений: новые сверху; ru/en ----------
     const CHANGELOG = [
+      { v: '2.0', d: '26.11', ru: 'Быстрые крутки для всех', en: 'Faster spins for everyone', items: [
+        ['Рулетка крутится примерно вдвое быстрее — обычная, супер и элитная', 'The roulette spins about twice as fast — normal, super and elite'],
+        ['Апгрейд, колесо фортуны, контракт и дуэль тоже стали быстрее', 'Upgrade, wheel of fortune, contract and duel are faster too'],
+        ['Переключатель «Быстрые крутки» убран: анимация теперь у всех и сразу короткая', 'The «Quick spins» switch is gone: everyone gets the animation, and it is short'],
+        ['Автокрутка ждёт меньше между крутками', 'Auto-spin waits less between spins']] },
       { v: '1.9', d: '25.11', ru: 'Новое оружие', en: 'New weapons', items: [
         ['Интерпол: ⚡ Узи, 🧨 Гранатомёт и 🔥 Огнемёт — в Оружейной хаба, в забеге их можно найти', 'Interpol: ⚡ Uzi, 🧨 Grenade launcher and 🔥 Flamethrower — in the Hub armory, and you can find them during a run'],
         ['У каждого нового ствола по три своих улучшения; на компьютере клавиши 4, 5, 6', 'Each new gun has three upgrades of its own; keys 4, 5, 6 on a computer'],
@@ -25358,11 +25360,6 @@
       applyTheme();
     });
 
-    document.getElementById('setSkipAnimToggle').addEventListener('change', (e) => {
-      state.settings.skipAnim = e.target.checked;
-      saveState();
-      showToast(e.target.checked ? '⚡ Быстрые крутки рулетки включены' : '🎬 Анимация рулетки включена');
-    });
     document.getElementById('setMusicToggle').addEventListener('change', (e) => toggleMusic(e.target.checked));
     document.getElementById('setMusicVol').addEventListener('input', (e) => {
       state.settings.musicVol = Number(e.target.value);

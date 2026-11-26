@@ -20576,7 +20576,7 @@
         // экран: виньетка, вспышки, стрелки на врагов, джойстик
         c.setTransform(1, 0, 0, 1, 0, 0);
         if (IP.scope && (IP.mode === 'play' || IP.mode === 'hub')) { const gr = c.createRadialGradient(sw / 2, shh / 2, Math.min(sw, shh) * 0.42, sw / 2, shh / 2, Math.max(sw, shh) * 0.72); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,0.5)'); c.fillStyle = gr; c.fillRect(0, 0, sw, shh); }
-        { const lowv = IP.mode === 'play' && !P.dead && !IP.paused ? hurtLevel(P.hp, P.hpMax, P.down) : 0; hurtFx(lowv, 0); drawHurtVignette(c, sw, shh, lowv, IP.t); }
+        { const lowv = IP.mode === 'play' && !P.dead && !IP.paused ? hurtLevel(P.hp, P.hpMax, P.down) : 0; hurtFx(lowv, lowv); drawHurtVignette(c, sw, shh, lowv, IP.t); }
         if (IP.hurtFlash > 0) {
           const a = IP.hurtFlash;
           const gr = c.createRadialGradient(sw / 2, shh / 2, Math.min(sw, shh) * 0.3, sw / 2, shh / 2, Math.max(sw, shh) * 0.7); gr.addColorStop(0, 'rgba(220,38,38,0)'); gr.addColorStop(1, `rgba(220,38,38,${a.toFixed(3)})`); c.fillStyle = gr; c.fillRect(0, 0, sw, shh);
@@ -25693,9 +25693,12 @@
 
     // ---------- история обновлений: новые сверху; ru/en ----------
     const CHANGELOG = [
+      { v: '2.31', d: '26.11', ru: 'Монитор в Интерполе', en: 'Monitor in Interpol', items: [
+        ['Интерпол: ниже половины здоровья тоже пищит кардиомонитор — чем меньше сердец, тем громче', 'Interpol: below half health the heart monitor beeps too — the fewer hearts, the louder'],
+        ['Писк звучит чисто: заглушение звука на него не действует', 'The beep stays clear: the muffling does not affect it']] },
       { v: '2.3', d: '26.11', ru: 'На грани', en: 'On the edge', items: [
         ['Мурино и Интерпол: ниже половины здоровья — красная виньетка, экран темнеет, звук мутнеет; чем меньше здоровья, тем сильнее', 'Murino and Interpol: below half health — red vignette, darker screen, muffled sound; the lower your health, the stronger'],
-        ['Мурино: писк кардиомонитора — чем меньше здоровья, тем громче', 'Murino: a heart-monitor flatline — the lower your health, the louder'],
+        ['Мурино: писк кардиомонитора — чем меньше здоровья, тем громче (звенит чисто, без мути)', 'Murino: a heart-monitor flatline — the lower your health, the louder'],
         ['Монстры в Мурино бьют в 1,7 раза сильнее, удар Интерпола снимает 1,5 сердца', 'Murino monsters hit 1.7× harder, an Interpol hit takes 1.5 hearts'],
         ['Интерпол: новые враги — 🐕 служебная овчарка, 💉 медик, 💣 подрывник и 🚁 дрон', 'Interpol: new enemies — 🐕 police dog, 💉 medic, 💣 bomber and 🚁 drone'],
         ['Интерпол: два новых босса — 🛡️ Полковник Броня и 🥷 Агент Тень', 'Interpol: two new bosses — 🛡️ Colonel Armor and 🥷 Agent Shadow']] },
